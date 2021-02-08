@@ -1,0 +1,15 @@
+{:deps {:aliases [:cljs]}
+ :builds
+ {:app {:target :browser
+        :output-dir "resources/public/js"
+        :asset-path "/js"
+
+        :modules
+        {:main ;; <- becomes public/js/main.js
+         {:entries [nvimgui.client]}}
+
+        ;; start a development http server on http://localhost:8020
+        ; :devtools
+        ; {:http-root "public"
+        ;  :http-port 8020}
+        }}}

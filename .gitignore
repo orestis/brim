@@ -1,0 +1,5 @@
+.nrepl-port
+.cpcache/
+.shadow-cljs/
+
+resources/public/js
