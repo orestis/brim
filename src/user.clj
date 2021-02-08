@@ -6,14 +6,6 @@
   (:import [java.io StringWriter]
            [java.net Socket]))
 
-(comment 
-(def SOCK (Socket. "127.0.0.1" 7777))
-(def IS (.getInputStream SOCK))
-(def OS (.getOutputStream SOCK))
-#_
-(.close IS)
-
-(.isConnected SOCK))
 
 (defn handle-redraw [events]
   (gui/process-redraw-events events)
@@ -44,12 +36,6 @@
     (println "stopped observing is"))
   )
 
-(defonce ID-SEQ (atom 0))
-(defn next-id []
-  (swap! ID-SEQ inc))
-
-(defn send-off-command [os cmd & params]
-  (msg/pack-stream [0 (next-id) cmd (or params [])] os))
 
 (comment 
 (send-off-command OS "nvim_command" "echo \"foo\"")

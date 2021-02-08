@@ -47,7 +47,7 @@
 
 (defmethod -event-msg-handler :chsk/recv
   [{:as ev-msg :keys [?data]}]
-  (js/console.log "Push event from server: %s" ?data))
+  (js/console.log "Push event from server:" ?data))
 
 (defmethod -event-msg-handler :chsk/handshake
   [{:as ev-msg :keys [?data]}]

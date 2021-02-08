@@ -1,0 +1,22 @@
+== Overview
+
+=== Architecture
+
+Server connects to the neovim instance and translates msgpack to websockets. So each notification
+from NeoVim will be read, and forwarded as a websocket message.
+
+CAUTION: Unfortunately AFAICT msgpack cannot be just passed through, you have to decode everything
+to get to the end of the message.
+
+TODO: see how firenvim does it. They open up a websocket server directly from inside
+neovim, so perhaps they can attach callbacks directly via lua?
+
+The client receives the notifications and builds up some state that is rendered to the DOM
+via every flush.
+
+=== Challenges
+
+To win this game we have to be efficient at every step. It will be interesting to find the
+fast paths in DOM rendering, and what data structures will be useful to translate the neovim
+cells into "runs" that can be styles with CSS.
+

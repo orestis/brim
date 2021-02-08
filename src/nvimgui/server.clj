@@ -6,6 +6,8 @@
             [ring.middleware.session]
             [ring.middleware.anti-forgery]
             [ring.middleware.resource]
+            [clojure.core.async :as a]
+            [nvimgui.nvim :as nvim]
             [taoensso.sente.server-adapters.http-kit :refer (get-sch-adapter)]))
 
 (let [{:keys [ch-recv send-fn connected-uids
@@ -62,14 +64,35 @@
       ring.middleware.anti-forgery/wrap-anti-forgery
       ring.middleware.session/wrap-session))
 
+(defn pipe-events-to-ws [ic]
+  (a/thread
+    (loop []
+      (tap> "reading from ic")
+      (when-let [msg (a/<!! ic)]
+        (tap> ["sendinng msg to ws" msg])
+        (chsk-send! :sente/all-users-without-uid 
+                    [:nvim/raw msg])
+        (tap> "sent!")
+        (recur)))))
 
-(defn start-server []
-  (run-server my-app {:port 7778}))
+(defn start-server [conn]
+  (let [ic (:input-chan conn)]
+    (nvim/start! conn)
+    (pipe-events-to-ws ic)
+    (run-server my-app {:port 7778})))
 
-#_
-(clojure.java.io/resource "public/css/main.css")
 
 (comment
-  (def SERVER (start-server))
+  (def CONN (nvim/nvim-conn (nvim/connect-to-nvim "127.0.0.1" 7777)
+                            (a/chan 5) (a/chan 5)))
+  (def SERVER (start-server CONN))
   (SERVER)
+  (add-tap println)
+  ;; should send to all clients the HI
+  (a/put! (:input-chan CONN) "HI")
+  (a/poll! (:output-chan CONN))
+  (nvim/send-off-command (:output-chan CONN)
+                         "nvim_ui_attach" 40 40
+                         {"ext_linegrid" true
+                          "rgb" true})
   )
