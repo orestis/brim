@@ -1,5 +1,6 @@
 .nrepl-port
 .cpcache/
 .shadow-cljs/
+.DS_Store
 
 resources/public/js
