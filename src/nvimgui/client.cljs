@@ -4,6 +4,8 @@
   (:require
    [cljs.core.async :as async :refer (<! >! put! chan)]
    [taoensso.sente  :as sente :refer (cb-success?)] ; <--- Add this
+   [nvimgui.gui-events :as gui]
+   [nvimgui.gui-grid :as grid]
   ))
 
 (def ?csrf-token
@@ -45,9 +47,29 @@
       (js/console.log "Channel socket successfully established!: " new-state-map)
       (js/console.log "Channel socket state change: "              new-state-map))))
 
+(defn handle-response [id error result]
+  (if error
+    (js/console.log "ERROR> " id error)
+    (js/console.log "RESP> " id result)))
+
+
+
+(defn handle-notification [method & params]
+  (case method
+    "redraw" (gui/process-redraw-events (first params))
+    (js/console.log "NOTE> " method params)))
+
+(defn handle-raw-event [[type & args]]
+  (case type
+    1 (apply handle-response args)
+    2 (apply handle-notification args)))
+
 (defmethod -event-msg-handler :chsk/recv
   [{:as ev-msg :keys [?data]}]
-  (js/console.log "Push event from server:" ?data))
+  (let [[k payload] ?data]
+    (if (= k :nvim/raw)
+      (handle-raw-event payload)
+      (js/console.log "Push event from server:" k payload))))
 
 (defmethod -event-msg-handler :chsk/handshake
   [{:as ev-msg :keys [?data]}]
@@ -66,11 +88,7 @@
 (defn ^:dev/after-load start []
   (js/console.log "start")
   (start-router!)
-  #_
-  (go-loop []
-           (let [x (<! ch-chsk)]
-             (println "Got a value in this loop:" x))
-           (recur)))
+  (grid/draw-grid @gui/gui-state))
 
 (defn ^:export init []
   ;; init is called ONCE when the page loads

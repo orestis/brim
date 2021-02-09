@@ -89,8 +89,10 @@
   (SERVER)
   (add-tap println)
   ;; should send to all clients the HI
-  (a/put! (:input-chan CONN) "HI")
+  (a/put! (:input-chan CONN) [2 "my" "days"])
   (a/poll! (:output-chan CONN))
+  (nvim/send-off-command (:output-chan CONN)
+                         "nvim_ui_detach")
   (nvim/send-off-command (:output-chan CONN)
                          "nvim_ui_attach" 40 40
                          {"ext_linegrid" true

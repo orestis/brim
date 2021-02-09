@@ -8,6 +8,7 @@
         {:main ;; <- becomes public/js/main.js
          {:entries [nvimgui.client]}}
 
+        :devtools {:watch-dir "resources/public"}
         ;; start a development http server on http://localhost:8020
         ; :devtools
         ; {:http-root "public"

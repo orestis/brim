@@ -1,3 +1,17 @@
 body {
-    background: yellow;
+    background: #fbfbfb;
+}
+
+
+
+.grid-container {
+    background: #44ff45;
+}
+
+.row-container {
+    background-color: var(--default-bg-color);
+    color: var(--default-fg-color);
+    text-decoration-color: var(--default-sp-color);
+    height: 1rem;
+    width: 100%;
 }
