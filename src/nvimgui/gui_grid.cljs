@@ -16,9 +16,21 @@
                                 italic bold strikethrough
                                 undercurl underline
                                 blend]}]
-  (SafeStyle/create
-           #js {:background-color (if background (utils/BinToCSS background) "inherit")
-                :color (if foreground (utils/BinToCSS foreground) "inherit")}))
+  (let [bg (if reverse foreground background)
+        fg (if reverse background foreground)]
+    (SafeStyle/create
+      #js {:background-color 
+           (if bg (utils/BinToCSS bg) "inherit")
+           :color
+           (if fg (utils/BinToCSS fg) "inherit")
+           :font-weight (if bold "bold" "normal")
+           :text-decoration-color
+           (if special (utils/BinToCSS special) "inherit")
+           :text-decoration-line (if-not (or underline strikethrough)
+                                   "none"
+                                   (str (when underline "underline")
+                                        " "
+                                        (when strikethrough "line-through")))})))
 
 (defn install-sheets [highlights]
   (when @styles
