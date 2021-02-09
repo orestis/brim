@@ -7,8 +7,6 @@
   (:import [goog.html 
            SafeStyle SafeStyleSheet]))
 
-(js/console.log "UTILS" utils)
-
 (defonce root (.getElementById js/document "app"))
 (defonce styles (atom nil))
 (defonce default-styles (atom nil))
@@ -44,7 +42,6 @@
                                           #js {:--default-bg-color (utils/BinToCSS bg)
                                                :--default-fg-color (utils/BinToCSS fg)
                                                :--default-sp-color (utils/BinToCSS sp)}))]
-    (js/console.log "default rule" rule)
     (reset! default-styles
             (style/installSafeStyleSheet rule))))
 

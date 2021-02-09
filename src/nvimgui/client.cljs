@@ -6,6 +6,7 @@
    [taoensso.sente  :as sente :refer (cb-success?)] ; <--- Add this
    [nvimgui.gui-events :as gui]
    [nvimgui.gui-grid :as grid]
+   [nvimgui.keyboard :as kbd]
   ))
 
 (def ?csrf-token
@@ -84,11 +85,16 @@
     (sente/start-client-chsk-router!
       ch-chsk event-msg-handler)))
 
+(defn send-keys [k]
+  (js/console.log "sending keycode" k)
+  (chsk-send! [:nvim/key k]))
+
 ;; start is called by init and after code reloading finishes
 (defn ^:dev/after-load start []
   (js/console.log "start")
   (start-router!)
-  (grid/draw-grid @gui/gui-state))
+  (grid/draw-grid @gui/gui-state)
+  (kbd/attach-handler send-keys))
 
 (defn ^:export init []
   ;; init is called ONCE when the page loads
@@ -100,4 +106,5 @@
 ;; this is called before any code is reloaded
 (defn ^:dev/before-load stop []
   (js/console.log "stop")
+  (kbd/remove-handler)
   (stop-router!))

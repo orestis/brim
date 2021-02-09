@@ -69,16 +69,32 @@
     (loop []
       (tap> "reading from ic")
       (when-let [msg (a/<!! ic)]
-        (tap> ["sendinng msg to ws" msg])
+        ;(tap> ["sendinng msg to ws" msg])
         (chsk-send! :sente/all-users-without-uid 
                     [:nvim/raw msg])
         (tap> "sent!")
         (recur)))))
 
+(defn send-keys-to-nvim [websocket oc]
+  (a/thread
+    (loop []
+      (tap> "reading from websocket")
+      (when-let [msg (a/<!! websocket)]
+        (tap> "got msg from websocket")
+        (let [{:keys [id ?data]} msg]
+          (tap> id)
+          (case id
+            :nvim/key (nvim/send-off-command oc
+                        "nvim_input" ?data)
+            (tap> (str "unknown id" id))))
+        (recur)))))
+
 (defn start-server [conn]
-  (let [ic (:input-chan conn)]
+  (let [ic (:input-chan conn)
+        oc (:output-chan conn)]
     (nvim/start! conn)
     (pipe-events-to-ws ic)
+    (send-keys-to-nvim ch-chsk oc)
     (run-server my-app {:port 7778})))
 
 
@@ -87,14 +103,21 @@
                             (a/chan 5) (a/chan 5)))
   (def SERVER (start-server CONN))
   (SERVER)
+  (a/<!! ch-chsk)
+  (a/poll! ch-chsk)
+  (a/put! ch-chsk :something)
   (add-tap println)
+  (tap> "Test")
   ;; should send to all clients the HI
   (a/put! (:input-chan CONN) [2 "my" "days"])
   (a/poll! (:output-chan CONN))
   (nvim/send-off-command (:output-chan CONN)
                          "nvim_ui_detach")
   (nvim/send-off-command (:output-chan CONN)
-                         "nvim_ui_attach" 40 40
+                         "nvim_input"
+                         "<Up>")
+  (nvim/send-off-command (:output-chan CONN)
+                         "nvim_ui_attach" 80 80
                          {"ext_linegrid" true
                           "rgb" true})
   )
