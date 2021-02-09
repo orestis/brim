@@ -57,6 +57,10 @@
   [state _ [grid-id]]
   (assoc-in state [:grids grid-id :rows] {}))
 
+;; TODO this is accumulating events in not a good way
+;; we should probably decompose the incoming events and
+;; update a persistent representation at this level
+;; so that the drawing code has an easier job
 (defmethod ui-event "grid_line"
   [state _ [grid-id row col-start cells]]
   (update-in state [:grids grid-id :rows row]

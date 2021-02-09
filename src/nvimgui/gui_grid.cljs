@@ -48,18 +48,25 @@
 (defn draw-row [row-cont row]
   (dom/removeChildren row-cont)
   (let [last-seen-hl-id (atom nil)]
-    (doseq [[col-start cells] row]
+    (doseq [[col-start cells] row
+            :let [col-span (dom/createDom "span" #js {:class "col-span"
+                                                      :style (str "left:"
+                                                                  col-start "ch")})]]
+      (dom/append row-cont col-span)
       (doseq [[c hl-id n] cells
               :let [hl-id (or hl-id
                             @last-seen-hl-id)
                     _ (reset! last-seen-hl-id hl-id)
                     n (or n 1)
-                    txt (str/join "" (repeat n c))
+                    txt  (str/join "" (repeat n c))
                     dom (dom/createDom "span" #js {:class "hl-run"
-                                                   :data-hl-id hl-id}
+                                                   :data-hl-id hl-id }
                                        txt)]]
-        (dom/append row-cont dom)))))
+        (dom/append col-span dom)))))
 
+;; clear the root only on grid resize or on grid clear
+;; compare last seen row with this one and don'n clobber over unchanged
+;; rows
 (defn- setup-grid [root-el {:keys [dimensions rows cursor] :as grid}]
   (let [[w h] dimensions
         pre-container (dom/createDom "pre" #js {:class "grid-container"})
@@ -73,13 +80,19 @@
     (apply dom/append pre-container row-els)
     (dom/append root-el pre-container)))
 
+(defonce last-seen (atom {}))
 (defn draw-grid [state]
   (tap> state)
   (let [grid (get-in state [:grids 1])
         highlights (:highlights state)
         default-colors (:default-colors state)]
-    (install-default-colors default-colors)
-    (install-sheets highlights)
+    (when-not (= highlights (:highlights @last-seen))
+      (install-sheets highlights)
+      (swap! last-seen assoc :highlights highlights))
+    (when-not (= default-colors (:default-colors @last-seen))
+      (install-default-colors default-colors)
+      (swap! last-seen assoc :default-colors default-colors))
+    
     (setup-grid root grid))
   state)
 
