@@ -93,15 +93,17 @@
 (defn ^:dev/after-load start []
   (js/console.log "start")
   (start-router!)
-  (grid/draw-grid @gui/gui-state)
-  (kbd/attach-handler send-keys))
+  (kbd/attach-handler send-keys)
+  (grid/draw-grid @gui/gui-state))
 
 (defn ^:export init []
   ;; init is called ONCE when the page loads
   ;; this is called in the index.html and must be exported
   ;; so it is available even in :advanced release builds
   (js/console.log "init")
-  (start))
+  (start-router!)
+  (kbd/attach-handler send-keys)
+  )
 
 ;; this is called before any code is reloaded
 (defn ^:dev/before-load stop []

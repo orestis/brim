@@ -17,8 +17,7 @@
    "ArrowDown" "Down"
    "ArrowLeft" "Left"
    "ArrowRight" "Right"
-   "<" "LT"
-   })
+   "<" "LT"})
 
 
 (defn key->code [k modifiers]

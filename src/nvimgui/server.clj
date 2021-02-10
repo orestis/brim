@@ -38,7 +38,7 @@
              "
              <div id='app'>app here</div>
              <script src='/js/main.js'></script>
-             <script>nvimgui.client.start()</script>
+             <script>nvimgui.client.init()</script>
              </body>
              </html>
 
@@ -117,7 +117,7 @@
                          "nvim_input"
                          "<Up>")
   (nvim/send-off-command (:output-chan CONN)
-                         "nvim_ui_attach" 80 80
+                         "nvim_ui_attach" 240 100
                          {"ext_linegrid" true
                           "rgb" true})
   )

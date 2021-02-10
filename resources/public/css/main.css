@@ -15,6 +15,7 @@ body {
     text-decoration-color: var(--default-sp-color);
     height: 1rem;
     width: 100%;
+    position: relative;
 }
 
 [data-hl-id='0'] {
@@ -23,10 +24,9 @@ body {
     text-decoration-color: var(--default-sp-color);
 }
 
-.hl-run {
-    /* position: absolute; */
-}
 
 .col-span {
     position: absolute;
+    width: 1ch;
+    height: 1rem;
 }
