@@ -96,10 +96,15 @@
     (doseq [row-cont row-els
             :let [cur-idx @idx
                   row (get rows cur-idx)]]
+      (.mark js/performance (str "update-row:start:" cur-idx))
       (when-not (identical? (get-in @last-seen [:rows cur-idx])
                             row)
         (update-row row-cont row)
         (swap! last-seen assoc-in [:rows cur-idx] row))
+      (.mark js/performance (str "update-row:end" cur-idx))
+      (.measure js/performance (str "update-row:" cur-idx)
+                (str "update-row:start:" cur-idx)
+                (str "update-row:end" cur-idx))
       (swap! idx inc))))
 
 ;; clear the root only on grid resize or on grid clear
@@ -146,7 +151,12 @@
 
 (defmethod gui/ui-event "flush"
   [state _ _]
-  (draw-grid state))
+  (js/requestAnimationFrame (fn []
+                              (.mark js/performance "draw-grid:start")
+                              (draw-grid state)
+                              (.mark js/performance "draw-grid:end")
+                              (.measure js/performance "draw-grid" "draw-grid:start" "draw-grid:end")))
+  state)
 
 
 

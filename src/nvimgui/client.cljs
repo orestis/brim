@@ -56,9 +56,14 @@
 
 
 (defn handle-notification [method & params]
+  (.mark js/performance "redraw-events:start")
   (case method
     "redraw" (gui/process-redraw-events (first params))
-    (js/console.log "NOTE> " method params)))
+    (js/console.log "NOTE> " method params)
+    )
+  (.mark js/performance "redraw-events:end")
+  (.measure js/performance "redraw-events" "redraw-events:start" "redraw-events:end")
+  )
 
 (defn handle-raw-event [[type & args]]
   (case type
@@ -89,11 +94,12 @@
   (js/console.log "sending keycode" k)
   (chsk-send! [:nvim/key k]))
 
-;; start is called by init and after code reloading finishes
+;; start is called after code reloading finishes
 (defn ^:dev/after-load start []
   (js/console.log "start")
   (start-router!)
   (kbd/attach-handler send-keys)
+  (reset! grid/last-seen {})
   (grid/draw-grid @gui/gui-state))
 
 (defn ^:export init []

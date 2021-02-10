@@ -7,6 +7,7 @@ body {
 
 .grid-container {
     background: #44ff45;
+    margin: 0;
 }
 
 .row-container {
@@ -29,4 +30,5 @@ body {
     position: absolute;
     width: 1ch;
     height: 1rem;
+    display: inline-block;
 }

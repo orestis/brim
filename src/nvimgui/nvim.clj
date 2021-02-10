@@ -60,15 +60,47 @@
   (a/>!! output-chan [0 (next-id) cmd (or params [])]))
 
 
-(comment
-  (def IC (a/chan 5))
-  (def OC (a/chan 5))
-  (def CONN (nvim-conn (connect-to-nvim "127.0.0.1" 7777)
-                       IC
-                       OC))
+(defn decode-response [id error result]
+  {:id id
+   ::type ::response
+   :error error
+   :result result})
 
-  (start! CONN)
+(defn decode-notification [method & params]
+  {:method method
+   ::type ::notification
+   :params params})
+
+(defn decode-event [[type & rest]]
+  (case type
+    1 (apply decode-response rest)
+    2 (apply decode-notification rest)))
+
+(comment
+  (do 
+    (def CONN (nvim-conn (connect-to-nvim "127.0.0.1" 7777)
+                         (a/chan 5) (a/chan 5)))
+
+    (start! CONN)
+    (def IC (:input-chan CONN))
+    (def OC (:output-chan CONN)))
+  (do
+    (send-off-command (:output-chan CONN)
+                           "nvim_ui_detach")
+    (send-off-command (:output-chan CONN)
+                           "nvim_ui_attach" 30 30
+                           {"ext_linegrid" true
+                            "rgb" true}))
   (a/<!! IC)
+  (def last-even *1)
+  (decode-event last-even)
+  (require '[nvimgui.server-grid :as sg])
+  (do
+    (sg/process-redraw (sg/create-editor-ui)
+                       (-> (decode-event last-even)
+                           :params
+                           first))
+    nil)
   (a/poll! IC)
   
   (send-off-command OC "nvim_command" "echo \"foo\"")
