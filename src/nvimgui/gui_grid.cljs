@@ -41,7 +41,6 @@
                         (SafeStyleSheet/createRule selector style)))
                     highlights)
         new-styles (apply SafeStyleSheet/concat rules)]
-    (tap> new-styles)
     (reset! styles
             (style/installSafeStyleSheet new-styles))))
 
@@ -59,29 +58,57 @@
 
 (defn draw-row [row-cont row]
   (dom/removeChildren row-cont)
-  (let [last-seen-hl-id (atom nil)]
-    (doseq [[col-start cells] row
-            :let [col-span (dom/createDom "span" #js {:class "col-span"
-                                                      :style (str "left:"
-                                                                  col-start "ch")})]]
-      (dom/append row-cont col-span)
-      (doseq [[c hl-id n] cells
-              :let [hl-id (or hl-id
+  (let [last-seen-hl-id (atom nil)
+        idx (atom 0)]
+    (doseq [[c hl-id] row
+            :let [hl-id (or hl-id
                             @last-seen-hl-id)
-                    _ (reset! last-seen-hl-id hl-id)
-                    n (or n 1)
-                    txt  (str/join "" (repeat n c))
-                    dom (dom/createDom "span" #js {:class "hl-run"
-                                                   :data-hl-id hl-id }
-                                       txt)]]
-        (dom/append col-span dom)))))
+                  _ (reset! last-seen-hl-id hl-id)
+                  col-span (dom/createDom "span" 
+                                          #js {:class "col-span"
+                                               :data-hl-id hl-id
+                                               :style (str "left:"
+                                                           @idx "ch")}
+                                          c)]]
+      (swap! idx inc)
+      (dom/append row-cont col-span))))
+
+(defn update-row [row-cont row]
+  (let [last-seen-hl-id (atom nil)
+        cells (dom/getChildren row-cont)
+        idx (atom 0)]
+    (doseq [col-span cells ;[c hl-id] row
+            :let [[c hl-id] (nth row @idx)
+                  hl-id (or hl-id
+                            @last-seen-hl-id)
+                  _ (reset! last-seen-hl-id hl-id)
+                  #_#_
+                  col-span (nth cells @idx)]]
+      (.setAttribute col-span "data-hl-id" hl-id)
+      (dom/setTextContent col-span c)
+      (swap! idx inc)
+      ))
+  )
+
+(defn update-grid [root-el rows last-seen]
+  (let [idx (atom 0)
+        row-els (dom/getChildren root-el)]
+    (doseq [row-cont row-els
+            :let [cur-idx @idx
+                  row (get rows cur-idx)]]
+      (when-not (identical? (get-in @last-seen [:rows cur-idx])
+                            row)
+        (update-row row-cont row)
+        (swap! last-seen assoc-in [:rows cur-idx] row))
+      (swap! idx inc))))
 
 ;; clear the root only on grid resize or on grid clear
 ;; compare last seen row with this one and don'n clobber over unchanged
 ;; rows
-(defn- setup-grid [root-el {:keys [dimensions rows cursor] :as grid}]
+(defn- setup-grid [root-el grid-id {:keys [dimensions rows cursor] :as grid}]
   (let [[w h] dimensions
-        pre-container (dom/createDom "pre" #js {:class "grid-container"})
+        pre-container (dom/createDom "pre" #js {:class "grid-container"
+                                                :data-grid-id grid-id})
         row-els (mapv (fn [i]
                         (let [row-cont (dom/createDom "div" #js {:class "row-container"
                                                                  :data-row-idx i})]
@@ -94,9 +121,11 @@
 
 (defonce last-seen (atom {}))
 (defn draw-grid [state]
-  (tap> state)
-  (let [grid (get-in state [:grids 1])
+  (let [grid-id 1
+        grid (get-in state [:grids grid-id])
         highlights (:highlights state)
+        dimensions (:dimensions grid)
+        rows (:rows grid)
         default-colors (:default-colors state)]
     (when-not (= highlights (:highlights @last-seen))
       (install-sheets highlights)
@@ -104,7 +133,14 @@
     (when-not (= default-colors (:default-colors @last-seen))
       (install-default-colors default-colors)
       (swap! last-seen assoc :default-colors default-colors))
+    (when-not (= dimensions (:dimensions @last-seen))
+      (setup-grid root grid-id grid)
+      (swap! last-seen assoc :dimensions dimensions))
     
+    (update-grid (.querySelector root (str "[data-grid-id=\"" grid-id "\"]"))
+                 rows
+                 last-seen)
+    #_
     (setup-grid root grid))
   state)
 

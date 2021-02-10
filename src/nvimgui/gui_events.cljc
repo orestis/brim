@@ -48,24 +48,71 @@
   [state _ [name id]]
   (assoc-in state [:higlight-groups name] id))
 
+
+(defn update-row [row col-start cells]
+  ;; the row is a vector of cells
+  ;; each cell is a vector of a char and a (posisble) hl-id
+  ;; we can always assume that the row is initialized with 
+  ;; the current number of cells?
+  (let [r (transient row)
+        idx (atom col-start)]
+    (->
+      (reduce (fn [acc [c hl-id n]]
+                (let [n (or n 1)]
+                  (loop [acc acc
+                         n n]
+                    (let [cur-idx @idx]
+                      (if (zero? n)
+                        acc
+                        (do
+                          (swap! idx inc)
+                          (recur (assoc! acc cur-idx [c hl-id])
+                                 (dec n))))))))
+              r
+              cells)
+      persistent!)))
+
+
+(defn init-row [w]
+  (apply vector (repeat w [""])))
+
+#_
+(update-row (init-row 10)
+            0 [["h" 5 5]
+               ["n"]
+               ["1" 1]])
+
+
+(defn init-grid-rows [w h]
+  (let [empty-row (init-row w)]
+    (persistent!
+      (reduce (fn [rows idx]
+                (assoc! rows idx empty-row))
+              (transient {})
+              (range h)))))
+
 (defmethod ui-event "grid_resize"
   [state _ [grid-id w h]]
-  (assoc-in state [:grids grid-id :dimensions] [w h]))
+  (-> state
+      (assoc-in [:grids grid-id :dimensions] [w h])
+      (assoc-in [:grids grid-id :rows]
+                (init-grid-rows w h))))
 
 
 (defmethod ui-event "grid_clear"
   [state _ [grid-id]]
-  (assoc-in state [:grids grid-id :rows] {}))
+  (let [[w h] (get-in state [:grids grid-id :dimensions])]
+    (assoc-in state [:grids grid-id :rows] 
+              (init-grid-rows w h))))
 
-;; TODO this is accumulating events in not a good way
-;; we should probably decompose the incoming events and
-;; update a persistent representation at this level
-;; so that the drawing code has an easier job
+
 (defmethod ui-event "grid_line"
   [state _ [grid-id row col-start cells]]
-  (update-in state [:grids grid-id :rows row]
-             (fnil conj [])
-             [col-start cells]))
+  (let [[w _] (get-in state [:grids grid-id :dimensions])
+        empty-row (init-row w)]
+    (update-in state [:grids grid-id :rows row]
+               (fnil update-row empty-row) 
+               col-start cells)))
 
 (defmethod ui-event "grid_cursor_goto"
   [state _ [grid-id row col]]

@@ -22,7 +22,7 @@
 
 (defn key->code [k modifiers]
   (let [sp (get special-keys k)]
-    (if (or sp modifiers)
+    (if (or sp (not= "" modifiers))
       (str "<" modifiers (or sp k) ">")
       k)))
 
