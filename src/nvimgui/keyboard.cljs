@@ -12,6 +12,7 @@
    "Tab" "Tab"
    "Escape" "Esc"
    " " "Space"
+   "Backspace" "BS"
    "ArrowUp" "Up"
    "ArrowDown" "Down"
    "ArrowLeft" "Left"
