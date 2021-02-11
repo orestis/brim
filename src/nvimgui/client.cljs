@@ -47,18 +47,66 @@
       (dom/append grid row-cont))
     (dom/append root-el grid)))
 
-(defn receive [[type payload]]
+(defn- extract-default-colors [payload]
+  (-> payload
+      first
+      (js->clj :keywordize-keys true)
+      :default-colors))
+
+(defn- extract-highlights [payload]
+  (-> payload
+      first
+      (js->clj)
+      (get "highlights")))
+
+(defn- extract-resize [payload]
+  (-> payload
+      first
+      (js->clj)
+      (get "grid-resize")
+      seq))
+
+(defn- extract-clear [payload]
+  (-> payload
+      first
+      (js->clj)
+      (get "grid-clear")))
+
+(defn- extract-grid-lines [payload]
+  (-> payload
+      first
+      (js->clj)
+      (get "grid-lines")))
+
+(defn receive [type payload]
+  ;(js/console.log "TYPE" type "PAULOAD" payload)
   (case type
-    :nvim/default-colors (grid/install-default-colors payload)
-    :nvim/highlights (grid/install-sheets payload)
-    :nvim/debug (js/console.log "DEBUG" payload)
-    :nvim/debug-grid (debug-grid payload)))
+    nil nil
+    "option_set" nil
+    "default_colors_set" (grid/install-default-colors 
+                           (extract-default-colors payload))
+    "hl_attr_define" (grid/install-sheets
+                       (extract-highlights payload))
+    "hl_group_set" nil
+    "grid_resize" (doseq [op (extract-resize payload)] 
+                    (grid/resize-grid op))
+    "grid_clear" (doseq [op (extract-clear payload)]
+                   (grid/grid-clear op))
+    "grid_line" (doseq [op (extract-grid-lines payload)]
+                  (grid/draw-lines op))
+    "grid_cursor_goto" nil
+    "flush" nil
+    "mode_info_set" nil
+    "mode_change" nil
+    (js/console.log "unknown type" type payload)
+    ))
 
 (set! (.-onmessage conn)
   (fn [e]
-    (let [msgs (edn/read-string (.-data e))]
-      (js/console.log "received" msgs)
-      (receive msgs))))
+    (let [ops (js/JSON.parse (.-data e))]
+      (doseq [[type payload] ops]
+        (receive type payload))
+      )))
 
 (defn send-keys [k]
   (js/console.log "sending keycode" k)
@@ -67,8 +115,7 @@
 ;; start is called after code reloading finishes
 (defn ^:dev/after-load start []
   (js/console.log "start")
-  (kbd/attach-handler send-keys)
-  (grid/draw-grid @gui/gui-state))
+  (kbd/attach-handler send-keys))
 
 (defn ^:export init []
   ;; init is called ONCE when the page loads

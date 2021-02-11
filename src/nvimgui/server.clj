@@ -1,6 +1,7 @@
 (ns nvimgui.server
   (:require 
             [org.httpkit.server :refer [run-server] :as http-kit]
+            [jsonista.core :as json]
             [ring.middleware.params]
             [ring.middleware.keyword-params]
             [ring.middleware.session]
@@ -58,13 +59,7 @@
               (println "response>>> " decoded)
               (and (= type ::nvim/notification)
                    (= method "redraw"))
-              (let [new-ui (sg/process-redraw ui (first params))
-                    grid (sg/html-grid (get-in new-ui [:grids 1]))]
-                (http-kit/send! ch (pr-str [:nvim/highlights
-                                            (get-in new-ui [:highlights])]))
-                (http-kit/send! ch (pr-str [:nvim/default-colors
-                                           (get-in new-ui [:default-colors])]))
-                (http-kit/send! ch (pr-str [:nvim/debug-grid grid]))
+              (let [new-ui (sg/process-redraw ui (first params))]
                 (swap! editors assoc-in [ch :ui] new-ui)))))
         (recur)))))
 
@@ -77,13 +72,23 @@
                          {"ext_linegrid" true
                           "rgb" true}) )
 
+(defn connect-ops-to-websocket [ops-chan ch]
+  (a/thread
+    (loop []
+      (when-let [msg (a/<!! ops-chan)]
+        (http-kit/send! ch (json/write-value-as-string msg))
+        ;(println "received from nvim " msg)
+        (recur)))))
+
 (defn init-editor [ch]
   (let [conn (nvim/nvim-conn 
                           (nvim/connect-to-nvim "127.0.0.1" 7777)
                           (a/chan 5) (a/chan 5))
         ic (:input-chan conn)
-        ui (sg/create-editor-ui)]
+        ops-chan (a/chan 5)
+        ui (sg/create-editor-ui ops-chan)]
     (nvim/start! conn)
+    (connect-ops-to-websocket ops-chan ch)
     (connect-nvim-to-server-grid ch ic)
     (attach-ui conn {})
   {:conn conn
@@ -91,7 +96,8 @@
 
 
 (defn destroy-editor [{:keys [conn ui]}]
-  (nvim/stop! conn))
+  (nvim/stop! conn)
+  (a/close! (:ops-chan ui)))
 
 (defn on-receive [ch msg]
   (println "RECeIVED" ch msg)
@@ -120,8 +126,7 @@
              (println "init channel!")
              (swap! editors assoc ch (init-editor ch)))
      :on-open (fn [ch]
-                (println "channel open")
-                (http-kit/send! ch (pr-str [:nvim/debug "open for business"])))
+                (println "channel open"))
      :on-close (fn [ch status]
                  (println "channel closed" status)
                  (when-let [editor (get @editors ch)]

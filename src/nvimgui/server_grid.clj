@@ -1,14 +1,10 @@
 (ns nvimgui.server-grid
-  "Maintain a server-side grid")
+  "Maintain a server-side grid"
+  (:require [clojure.core.async :as a]))
 
-(defn create-editor-ui []
+(defn create-editor-ui [ops-chan]
   {:grids {}
-   :modes-list []
-   :cursor-style-enabled true
-   :options {}
-   :default-colors {}
-   :highlight-ids {}
-   :highlight-groups {}})
+   :ops-chan ops-chan})
 
 (defmulti redraw-event (fn [state event-name args]
                          event-name))
@@ -20,42 +16,41 @@
 
 (defmethod redraw-event "mode_info_set"
   [state _ [cursor-style-enabled mode-info]]
-  (assoc state
-         :cursor-style-enabled cursor-style-enabled
-         :modes-list mode-info))
+  (update state :current-ops
+          conj {:cursor-style-enabled cursor-style-enabled
+                :modes-list mode-info}))
 
 (defmethod redraw-event "option_set"
   [state _ [k v]]
-  (assoc-in state [:options k] v))
+  (update-in state [:current-ops 0 :options]
+          assoc k v))
 
 (defmethod redraw-event "default_colors_set"
   [state _ [fg bg sp term-fg term-bg]]
-  (assoc-in state [:default-colors]
-            {:fg fg
-             :bg bg
-             :sp sp
-             :term-fg term-fg
-             :term-bg term-bg}))
+  (update state :current-ops 
+          conj {:default-colors
+                {:fg fg :bg bg :sp sp}}))
 
 (defmethod redraw-event "hl_attr_define"
   [state _ [id rgb cterm info]]
   ;; cterm we don't care
   ;; info is about ext_hlstate TODO
-  (assoc-in state [:highlights id] rgb))
+  (update-in state [:current-ops 0 :highlights] assoc id rgb))
 
 (defmethod redraw-event "grid_cursor_goto"
   [state _ [grid-id row col]]
-  (assoc-in state [:grids grid-id :cursor] [row col]))
+  (update state :current-ops conj
+          {:cursor [grid-id row col]}))
 
 (defmethod redraw-event "mode_change"
   [state _ [mode mode-idx]]
-  (assoc state 
-         :mode mode
-         :mode-idx mode-idx))
+  (update state :current-ops 
+          conj {:mode mode
+                :mode-idx mode-idx}))
 
 (defmethod redraw-event "hl_group_set"
   [state _ [name id]]
-  (assoc-in state [:higlight-groups name] id))
+  (update-in state [:current-ops 0 :highlight-groups] assoc name id))
 
 
 (defn create-grid [w h]
@@ -67,36 +62,23 @@
 (defmethod redraw-event "grid_resize"
   [state _ [grid-id w h]]
   (-> state
-      (assoc-in [:grids grid-id] (create-grid w h))))
+      (assoc-in [:grids grid-id] (create-grid w h))
+      (update-in [:current-ops 0 :grid-resize] assoc grid-id [w h])))
 
 (defmethod redraw-event "grid_clear"
   [state _ [grid-id]]
   (let [[w h] (get-in state [:grids grid-id :dimensions])]
-    (assoc-in state [:grids grid-id] (create-grid w h))))
+    (-> state
+        (assoc-in [:grids grid-id] (create-grid w h))
+        (update-in [:current-ops 0 :grid-clear] conj grid-id))))
 
 (defmethod redraw-event "grid_destroy"
   [state _ [grid-id]]
-  (update state :grids dissoc grid-id))
+  (-> state
+      (update :grids dissoc grid-id)
+      (update :current-ops conj {:grid-destroy grid-id})))
 
 
-
-(defmethod redraw-event "grid_line"
-  [state _ [grid-id row col-start cells]]
-  (let [{:keys [text hl-ids]} (get-in state [:grids grid-id])
-        idx (atom col-start)]
-    ;; text and hl-ids are mutable! bang away
-    (doseq [[s hl-id n] cells
-            :let [n (or n 1)
-                  hl-id (when hl-id (int hl-id))
-                  c (first s)]]
-      (loop [n n]
-        (let [cur-idx @idx]
-          (when-not (zero? n)
-            (aset text row cur-idx c)
-            (aset hl-ids row cur-idx hl-id)
-            (swap! idx inc)
-            (recur (dec n))))))
-    state))
 
 
 (defn debug-grid [{:keys [text dimensions]}]
@@ -142,21 +124,76 @@
                       ranges (segment-row row-hl)]]
             [row-idx (spans-from-ranges row-text ranges)]))))
 
+(defn html-line [state grid-id row-idx]
+  (let [{:keys [text hl-ids]} (get-in state [:grids grid-id])
+        row-text (aget text row-idx)
+        row-hl (aget hl-ids row-idx)
+        ranges (segment-row row-hl)]
+    (spans-from-ranges row-text ranges)))
+
+(defmethod redraw-event "grid_line"
+  [state _ [grid-id row col-start cells]]
+  (let [{:keys [text hl-ids]} (get-in state [:grids grid-id])
+        idx (atom col-start)]
+    ;; text and hl-ids are mutable! bang away
+    (doseq [[s hl-id n] cells
+            :let [n (or n 1)
+                  hl-id (when hl-id (int hl-id))
+                  c (first s)]]
+      (loop [n n]
+        (let [cur-idx @idx]
+          (when-not (zero? n)
+            (aset text row cur-idx c)
+            (aset hl-ids row cur-idx hl-id)
+            (swap! idx inc)
+            (recur (dec n))))))
+    (update-in state [:current-ops 0 :grid-lines grid-id]
+               assoc row (html-line state grid-id row))))
+
+(defn compress-ops [ops]
+  (->> ops
+       (partition-by keys)
+       (map #(apply merge-with merge %))))
+
+
 (defmethod redraw-event "flush"
   [state _ _]
-  (println "FLUSH")
-  (println (debug-grid (get-in state [:grids 1])))
-  ;; put a channel in the editor ui so that on every flush
-  ;; we can send in the grid?
-  state)
+  (let [c (:ops-chan state)
+        ops (:pending-ops state)]
+    (def OPS ops)
+    (a/>!! c ops))
+  (assoc state :pending-ops []))
+
+(defn handle-redraw-event [editor-ui event-name args]
+  (let [current-event (:current-event editor-ui)
+        current-op-col (:current-ops editor-ui)
+        new-event (not= current-event event-name)]
+
+    (redraw-event (cond-> editor-ui 
+                    new-event
+                    (-> 
+                      (assoc :current-ops [])
+                      (update :pending-ops conj [current-event current-op-col]))
+                    :always
+                    (assoc 
+                      :current-event event-name))
+                  event-name args)))
 
 (defn- nested-event-reducer [editor-ui [event-name & invocations]]
-  (reduce #(redraw-event %1 event-name %2)
+  (reduce #(handle-redraw-event %1 event-name %2)
           editor-ui
           invocations))
 
 (defn process-redraw [editor-ui events]
-  (reduce nested-event-reducer
-          editor-ui
-          events))
+  (def EVENTS events)
+  (let [pending-ops []]
+    (reduce nested-event-reducer
+            (assoc editor-ui 
+                   :pending-ops pending-ops
+                   :current-ops [])
+            events)))
 
+(comment
+(process-redraw (create-editor-ui (a/chan 10)) (drop 1 EVENTS))
+OPS
+)
