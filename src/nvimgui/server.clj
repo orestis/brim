@@ -45,7 +45,7 @@
   (a/thread
     (loop []
       (when-let [msg (a/<!! ic)]
-        (println "received from nvim " msg)
+        ;(println "received from nvim " msg)
         (when-let [{:keys [ui]} (get @editors ch)]
           (println "found editor for channel")
           (let [{type ::nvim/type
@@ -59,8 +59,8 @@
               (and (= type ::nvim/notification)
                    (= method "redraw"))
               (let [new-ui (sg/process-redraw ui (first params))
-                    grid (sg/debug-grid (get-in new-ui [:grids 1]))]
-                (http-kit/send! ch (pr-str [:nvim/debug grid]))
+                    grid (sg/html-grid (get-in new-ui [:grids 1]))]
+                (http-kit/send! ch (pr-str [:nvim/debug-grid grid]))
                 (swap! editors assoc-in [ch :ui] new-ui)))))
         (recur)))))
 

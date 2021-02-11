@@ -108,6 +108,41 @@
       (.append sb \newline))
     (str sb)))
 
+
+(defn segment-row [hl]
+  (loop [seg-start 0
+         seg-length 1
+         i 1
+         last-hl (aget hl seg-start)
+         ranges []]
+    (if (= (alength hl) i)
+      (conj ranges [last-hl seg-start seg-length])
+      (let [cur-hl (aget hl i)]
+        (if (or (nil? cur-hl) (= cur-hl last-hl))
+          (recur seg-start (inc seg-length) (inc i) last-hl ranges)
+          (recur i  1 (inc i) cur-hl (conj ranges
+                                          [last-hl seg-start seg-length])))))))
+
+(defn spans-from-ranges [text ranges]
+  (let [sb (StringBuilder.)]
+    (doseq [[hl-id start l] ranges]
+      (.append sb "<span class='hl-")
+      (.append sb hl-id)
+      (.append sb "'>")
+      (.append sb text start l)
+      (.append sb "</span>"))
+    (str sb)))
+
+
+(defn html-grid [{:keys [text dimensions hl-ids]}]
+  (let [[w h] dimensions]
+    (into {}
+          (for [row-idx (range h)
+                :let [row-text (aget text row-idx) 
+                      row-hl (aget hl-ids row-idx)
+                      ranges (segment-row row-hl)]]
+            [row-idx (spans-from-ranges row-text ranges)]))))
+
 (defmethod redraw-event "flush"
   [state _ _]
   (println "FLUSH")

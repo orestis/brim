@@ -4,6 +4,7 @@
   (:require
    [cljs.core.async :as async :refer (<! >! put! chan)]
    [clojure.edn :as edn]
+   [goog.dom :as dom]
    [nvimgui.gui-events :as gui]
    [nvimgui.gui-grid :as grid]
    [nvimgui.keyboard :as kbd]
@@ -32,10 +33,30 @@
     (js/alert "error")
     (.log js/console js/arguments)))
 
+(defn debug-grid [rows]
+  (let [root-el (.getElementById js/document "app")
+        grid (dom/createDom "pre" #js {:class "grid-container"})
+        ks (sort (keys rows))]
+
+    (dom/removeChildren root-el)
+    (doseq [i ks
+            :let [row (get rows i)
+                  row-cont (dom/createDom "div" #js {:class "row-container"
+                                                     :data-row-idx i})]]
+      (set! (.-innerHTML row-cont) row)
+      (dom/append grid row-cont))
+    (dom/append root-el grid)))
+
+(defn receive [[type payload]]
+  (case type
+    :nvim/debug (js/console.log "DEBUG" payload)
+    :nvim/debug-grid (debug-grid payload)))
+
 (set! (.-onmessage conn)
   (fn [e]
     (let [msgs (edn/read-string (.-data e))]
-      (js/console.log "received" msgs))))
+      (js/console.log "received" msgs)
+      (receive msgs))))
 
 (defn send-keys [k]
   (js/console.log "sending keycode" k)
