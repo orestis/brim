@@ -49,6 +49,8 @@
 
 (defn receive [[type payload]]
   (case type
+    :nvim/default-colors (grid/install-default-colors payload)
+    :nvim/highlights (grid/install-sheets payload)
     :nvim/debug (js/console.log "DEBUG" payload)
     :nvim/debug-grid (debug-grid payload)))
 

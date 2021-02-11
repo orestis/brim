@@ -60,13 +60,17 @@
                    (= method "redraw"))
               (let [new-ui (sg/process-redraw ui (first params))
                     grid (sg/html-grid (get-in new-ui [:grids 1]))]
+                (http-kit/send! ch (pr-str [:nvim/highlights
+                                            (get-in new-ui [:highlights])]))
+                (http-kit/send! ch (pr-str [:nvim/default-colors
+                                           (get-in new-ui [:default-colors])]))
                 (http-kit/send! ch (pr-str [:nvim/debug-grid grid]))
                 (swap! editors assoc-in [ch :ui] new-ui)))))
         (recur)))))
 
 (defn attach-ui [conn {:keys [w h]
-                       :or {w 30
-                            h 30}}]
+                       :or {w 120
+                            h 50}}]
   (nvim/send-off-command (:output-chan conn) "nvim_ui_detach")
   (nvim/send-off-command (:output-chan conn)
                          "nvim_ui_attach" w h

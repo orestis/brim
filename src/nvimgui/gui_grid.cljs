@@ -36,7 +36,7 @@
   (when @styles
     (style/uninstallStyles @styles))
   (let [rules (mapv (fn [[hl-id hl-value]]
-                      (let [selector (str "[data-hl-id='" hl-id "']")
+                      (let [selector (str ".hl-" hl-id "")
                             style (css-from-hl-attr hl-value)]
                         (SafeStyleSheet/createRule selector style)))
                     highlights)
