@@ -59,7 +59,7 @@
 
 
 (defn create-grid [w h]
-  {:text (make-array Character/TYPE h w)
+  {:text (into-array (repeatedly h #(char-array w \space)))
    :dimensions [w h]
    :hl-ids (make-array java.lang.Integer h w)})
 
@@ -68,7 +68,6 @@
   [state _ [grid-id w h]]
   (-> state
       (assoc-in [:grids grid-id] (create-grid w h))))
-
 
 (defmethod redraw-event "grid_clear"
   [state _ [grid-id]]
