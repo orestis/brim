@@ -100,24 +100,15 @@
   (a/close! (:ops-chan ui)))
 
 (defn on-receive [ch msg]
-  (println "RECeIVED" ch msg)
-  #_
-  (when-let [{:keys [input-chan output-chan]} (get @connected ch)]
-                   ))
+  (let [[type payload] (json/read-value msg)
+        {:keys [conn ui]} (get @editors ch)
+        oc (:output-chan conn)]
+    (case type
+      "init" nil
+      "key" (nvim/send-off-command oc
+                                   "nvim_input" payload)
+      (println "unknown event" type payload))))
 
-
-(defn send-keys-to-nvim [websocket oc]
-  (a/thread
-    (loop []
-      (tap> "reading from websocket")
-      (when-let [msg (a/<!! websocket)]
-        (tap> "got msg from websocket")
-        (let [{:keys [id ?data]} msg]
-          (case id
-            :nvim/key (nvim/send-off-command oc
-                        "nvim_input" ?data)
-            (tap> (str "unknown id" id))))
-        (recur)))))
 
 (defn ws-handler [request]
   (http-kit/as-channel 

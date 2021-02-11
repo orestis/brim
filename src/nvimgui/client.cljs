@@ -20,13 +20,12 @@
   (js/WebSocket. "ws://localhost:7778/ws"))
 
 (defn send-msg [msg]
-  (.send conn
-         (pr-str msg)))
+  (.send conn (js/JSON.stringify msg)))
 
 (set! (.-onopen conn)
   (fn [e]
     (js/console.log "OPEN!!!" conn)
-    (send-msg [:init])))
+    (send-msg #js ["init"])))
 
 (set! (.-onerror conn) 
   (fn []
@@ -110,7 +109,7 @@
 
 (defn send-keys [k]
   (js/console.log "sending keycode" k)
-  (send-msg [:nvim/key k]))
+  (send-msg #js ["key" k]))
 
 ;; start is called after code reloading finishes
 (defn ^:dev/after-load start []
