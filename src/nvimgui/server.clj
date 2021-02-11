@@ -1,25 +1,15 @@
 (ns nvimgui.server
-  (:require [taoensso.sente :as sente]
-            [org.httpkit.server :refer [run-server]]
+  (:require 
+            [org.httpkit.server :refer [run-server] :as http-kit]
             [ring.middleware.params]
             [ring.middleware.keyword-params]
             [ring.middleware.session]
             [ring.middleware.anti-forgery]
             [ring.middleware.resource]
             [clojure.core.async :as a]
-            [nvimgui.nvim :as nvim]
-            [taoensso.sente.server-adapters.http-kit :refer (get-sch-adapter)]))
+            [nvimgui.server-grid :as sg]
+            [nvimgui.nvim :as nvim]))
 
-(let [{:keys [ch-recv send-fn connected-uids
-              ajax-post-fn ajax-get-or-ws-handshake-fn]}
-      (sente/make-channel-socket! (get-sch-adapter) {})]
-
-  (def ring-ajax-post                ajax-post-fn)
-  (def ring-ajax-get-or-ws-handshake ajax-get-or-ws-handshake-fn)
-  (def ch-chsk                       ch-recv) ; ChannelSocket's receive channel
-  (def chsk-send!                    send-fn) ; ChannelSocket's send API fn
-  (def connected-uids                connected-uids) ; Watchable, read-only atom
-  )
 
 (defn index [req]
   (let [csrf-token (force ring.middleware.anti-forgery/*anti-forgery-token*)
@@ -47,32 +37,64 @@
      :headers {"Content-Type" "text/html; charset=utf-8"}
      :body body}))
 
-(defn routes [{:keys [uri request-method] :as req}]
-  (case [uri request-method]
-    ["/" :get] (index req)
-    ["/chsk" :get] (ring-ajax-get-or-ws-handshake req)
-    ["/chsk" :post] (ring-ajax-post req)
-    {:status 404
-     :headers {}
-     :body (str "not found" uri " - " request-method)}))
+(defonce editors (atom {}))
+#_
+(reset! editors {})
 
-(def my-app
-  (-> routes
-      (ring.middleware.resource/wrap-resource "public")
-      ring.middleware.keyword-params/wrap-keyword-params
-      ring.middleware.params/wrap-params
-      ring.middleware.anti-forgery/wrap-anti-forgery
-      ring.middleware.session/wrap-session))
-
-(defn pipe-events-to-ws [ic]
+(defn connect-nvim-to-server-grid [ch ic]
   (a/thread
     (loop []
       (when-let [msg (a/<!! ic)]
-        ;(tap> ["sendinng msg to ws" msg])
-        (chsk-send! :sente/all-users-without-uid 
-                    [:nvim/raw msg])
-        (tap> "sent!")
+        (println "received from nvim " msg)
+        (when-let [{:keys [ui]} (get @editors ch)]
+          (println "found editor for channel")
+          (let [{type ::nvim/type
+                 method :method
+                 params :params
+                 :as decoded} (nvim/decode-event msg)]
+            (println decoded "event type" type)
+            (cond
+              (= type ::nvim/response)
+              (println "response>>> " decoded)
+              (and (= type ::nvim/notification)
+                   (= method "redraw"))
+              (let [new-ui (sg/process-redraw ui (first params))
+                    grid (sg/debug-grid (get-in new-ui [:grids 1]))]
+                (http-kit/send! ch (pr-str [:nvim/debug grid]))
+                (swap! editors assoc-in [ch :ui] new-ui)))))
         (recur)))))
+
+(defn attach-ui [conn {:keys [w h]
+                       :or {w 30
+                            h 30}}]
+  (nvim/send-off-command (:output-chan conn) "nvim_ui_detach")
+  (nvim/send-off-command (:output-chan conn)
+                         "nvim_ui_attach" w h
+                         {"ext_linegrid" true
+                          "rgb" true}) )
+
+(defn init-editor [ch]
+  (let [conn (nvim/nvim-conn 
+                          (nvim/connect-to-nvim "127.0.0.1" 7777)
+                          (a/chan 5) (a/chan 5))
+        ic (:input-chan conn)
+        ui (sg/create-editor-ui)]
+    (nvim/start! conn)
+    (connect-nvim-to-server-grid ch ic)
+    (attach-ui conn {})
+  {:conn conn
+   :ui ui}))
+
+
+(defn destroy-editor [{:keys [conn ui]}]
+  (nvim/stop! conn))
+
+(defn on-receive [ch msg]
+  (println "RECeIVED" ch msg)
+  #_
+  (when-let [{:keys [input-chan output-chan]} (get @connected ch)]
+                   ))
+
 
 (defn send-keys-to-nvim [websocket oc]
   (a/thread
@@ -87,23 +109,62 @@
             (tap> (str "unknown id" id))))
         (recur)))))
 
-(defn start-server [conn]
-  (let [ic (:input-chan conn)
-        oc (:output-chan conn)]
-    (nvim/start! conn)
-    (pipe-events-to-ws ic)
-    (send-keys-to-nvim ch-chsk oc)
+(defn ws-handler [request]
+  (http-kit/as-channel 
+    request
+    {:init (fn [ch]
+             (println "init channel!")
+             (swap! editors assoc ch (init-editor ch)))
+     :on-open (fn [ch]
+                (println "channel open")
+                (http-kit/send! ch (pr-str [:nvim/debug "open for business"])))
+     :on-close (fn [ch status]
+                 (println "channel closed" status)
+                 (when-let [editor (get @editors ch)]
+                   (destroy-editor editor)
+                   (swap! editors dissoc ch)))
+     :on-ping (fn [ch msg]
+                (println "PING" msg))
+     :on-receive #'on-receive}))
+
+(defn routes [{:keys [uri request-method] :as req}]
+  (case [uri request-method]
+    ["/" :get] (index req)
+    ["/ws" :get] (ws-handler req)
+    {:status 404
+     :headers {}
+     :body (str "not found" uri " - " request-method)}))
+
+(def my-app
+  (-> routes
+      (ring.middleware.resource/wrap-resource "public")
+      ring.middleware.keyword-params/wrap-keyword-params
+      ring.middleware.params/wrap-params
+      ring.middleware.anti-forgery/wrap-anti-forgery
+      ring.middleware.session/wrap-session))
+
+;(defn pipe-events-to-ws [ic]
+;  (a/thread
+;    (loop []
+;      (when-let [msg (a/<!! ic)]
+;        ;(tap> ["sendinng msg to ws" msg])
+;        #_
+;        (chsk-send! :sente/all-users-without-uid 
+;                    [:nvim/raw msg])
+;        (tap> "sent!")
+;        (recur)))))
+
+
+(defn start-server []
+  (let []
     (run-server my-app {:port 7778})))
 
 
 (comment
   (def CONN (nvim/nvim-conn (nvim/connect-to-nvim "127.0.0.1" 7777)
                             (a/chan 5) (a/chan 5)))
-  (def SERVER (start-server CONN))
+  (def SERVER (start-server))
   (SERVER)
-  (a/<!! ch-chsk)
-  (a/poll! ch-chsk)
-  (a/put! ch-chsk :something)
   (add-tap println)
   (tap> "Test")
   ;; should send to all clients the HI

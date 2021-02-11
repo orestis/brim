@@ -112,6 +112,8 @@
   [state _ _]
   (println "FLUSH")
   (println (debug-grid (get-in state [:grids 1])))
+  ;; put a channel in the editor ui so that on every flush
+  ;; we can send in the grid?
   state)
 
 (defn- nested-event-reducer [editor-ui [event-name & invocations]]

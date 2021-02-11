@@ -3,7 +3,7 @@
     [cljs.core.async.macros :as asyncm :refer (go go-loop)])
   (:require
    [cljs.core.async :as async :refer (<! >! put! chan)]
-   [taoensso.sente  :as sente :refer (cb-success?)] ; <--- Add this
+   [clojure.edn :as edn]
    [nvimgui.gui-events :as gui]
    [nvimgui.gui-grid :as grid]
    [nvimgui.keyboard :as kbd]
@@ -13,93 +13,38 @@
   (when-let [el (.getElementById js/document "sente-csrf-token")]
     (.getAttribute el "data-csrf-token")))
 
-(let [{:keys [chsk ch-recv send-fn state]}
-      (sente/make-channel-socket-client!
-       "/chsk" ; Note the same path as before
-       ?csrf-token
-       {:type :auto ; e/o #{:auto :ajax :ws}
-       })]
-
-  (def chsk       chsk)
-  (def ch-chsk    ch-recv) ; ChannelSocket's receive channel
-  (def chsk-send! send-fn) ; ChannelSocket's send API fn
-  (def chsk-state state)   ; Watchable, read-only atom
-  )
-
-(defmulti -event-msg-handler
-  "Multimethod to handle Sente `event-msg`s"
-  :id ; Dispatch on event-id
-  )
-
-(defn event-msg-handler
-  "Wraps `-event-msg-handler` with logging, error catching, etc."
-  [{:as ev-msg :keys [id ?data event]}]
-  (-event-msg-handler ev-msg))
-
-(defmethod -event-msg-handler
-  :default ; Default/fallback case (no other matching handler)
-  [{:as ev-msg :keys [event]}]
-  (js/console.log "Unhandled event: " event))
-
-(defmethod -event-msg-handler :chsk/state
-  [{:as ev-msg :keys [?data]}]
-  (let [[old-state-map new-state-map] ?data]
-    (if (:first-open? new-state-map)
-      (js/console.log "Channel socket successfully established!: " new-state-map)
-      (js/console.log "Channel socket state change: "              new-state-map))))
-
-(defn handle-response [id error result]
-  (if error
-    (js/console.log "ERROR> " id error)
-    (js/console.log "RESP> " id result)))
 
 
+(defonce conn 
+  (js/WebSocket. "ws://localhost:7778/ws"))
 
-(defn handle-notification [method & params]
-  (.mark js/performance "redraw-events:start")
-  (case method
-    "redraw" (gui/process-redraw-events (first params))
-    (js/console.log "NOTE> " method params)
-    )
-  (.mark js/performance "redraw-events:end")
-  (.measure js/performance "redraw-events" "redraw-events:start" "redraw-events:end")
-  )
+(defn send-msg [msg]
+  (.send conn
+         (pr-str msg)))
 
-(defn handle-raw-event [[type & args]]
-  (case type
-    1 (apply handle-response args)
-    2 (apply handle-notification args)))
+(set! (.-onopen conn)
+  (fn [e]
+    (js/console.log "OPEN!!!" conn)
+    (send-msg [:init])))
 
-(defmethod -event-msg-handler :chsk/recv
-  [{:as ev-msg :keys [?data]}]
-  (let [[k payload] ?data]
-    (if (= k :nvim/raw)
-      (handle-raw-event payload)
-      (js/console.log "Push event from server:" k payload))))
+(set! (.-onerror conn) 
+  (fn []
+    (js/alert "error")
+    (.log js/console js/arguments)))
 
-(defmethod -event-msg-handler :chsk/handshake
-  [{:as ev-msg :keys [?data]}]
-  (let [[?uid ?csrf-token ?handshake-data] ?data]
-    (js/console.log "Handshake: " ?data)))
-
-(defonce router_ (atom nil))
-(defn  stop-router! [] (when-let [stop-f @router_] (stop-f)))
-(defn start-router! []
-  (stop-router!)
-  (reset! router_
-    (sente/start-client-chsk-router!
-      ch-chsk event-msg-handler)))
+(set! (.-onmessage conn)
+  (fn [e]
+    (let [msgs (edn/read-string (.-data e))]
+      (js/console.log "received" msgs))))
 
 (defn send-keys [k]
   (js/console.log "sending keycode" k)
-  (chsk-send! [:nvim/key k]))
+  (send-msg [:nvim/key k]))
 
 ;; start is called after code reloading finishes
 (defn ^:dev/after-load start []
   (js/console.log "start")
-  (start-router!)
   (kbd/attach-handler send-keys)
-  (reset! grid/last-seen {})
   (grid/draw-grid @gui/gui-state))
 
 (defn ^:export init []
@@ -107,12 +52,10 @@
   ;; this is called in the index.html and must be exported
   ;; so it is available even in :advanced release builds
   (js/console.log "init")
-  (start-router!)
   (kbd/attach-handler send-keys)
   )
 
 ;; this is called before any code is reloaded
 (defn ^:dev/before-load stop []
   (js/console.log "stop")
-  (kbd/remove-handler)
-  (stop-router!))
+  (kbd/remove-handler))

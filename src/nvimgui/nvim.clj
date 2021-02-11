@@ -52,6 +52,11 @@
             (recur)))))))
 
 
+(defn stop! [{:keys [sock input-chan output-chan]}]
+  (a/close! output-chan)
+  (a/close! input-chan)
+  (.close sock))
+
 (defonce ID-SEQ (atom 0))
 (defn next-id []
   (swap! ID-SEQ inc))
