@@ -9,10 +9,19 @@ body {
     background: #44ff45;
     margin: 0;
     transition: opacity 0.2s ease;
+    position: relative;
 }
 
 .busy {
-    opacity: 0.7;
+    opacity: 1;
+}
+
+.cursor {
+    position: absolute;
+    width: 1ch;
+    height: 1rem;
+    background: red;
+    opacity: 0.5;
 }
 
 .row-container {

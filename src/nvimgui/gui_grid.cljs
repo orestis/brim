@@ -71,6 +71,8 @@
       (dom/removeNode previous))
     (let [pre-container (dom/createDom "pre" #js {:class "grid-container"
                                                   :data-grid-id grid-id})
+          cursor (dom/createDom "div" #js {:class  "cursor"
+                                           :data-grid-id grid-id})
           rows (atom {})
           row-els (mapv (fn [i]
                           (let [row (dom/createDom "div" 
@@ -83,8 +85,10 @@
       (swap! grids update grid-id assoc 
              :container pre-container
              :dimensions [w h]
+             :cursor cursor
              :rows @rows)
       (apply dom/append pre-container row-els)
+      (dom/append pre-container cursor)
       (dom/append root pre-container))))
 
 (defn grid-clear [grid-id]
@@ -106,5 +110,11 @@
 (defn set-busy [x]
   (dom.classlist/enable root "busy" x))
 
+
+(defn set-cursor [[grid-id row col]]
+  (let [grid (get @grids grid-id)
+        cursor (:cursor grid)]
+    (set! (.-style cursor)
+          (str "left: " col "ch; top: " row "rem;"))))
 
 

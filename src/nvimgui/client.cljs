@@ -77,6 +77,12 @@
       (js->clj)
       (get "grid-lines")))
 
+(defn- extract-grid-cursor [payload]
+  (-> payload
+      first
+      (js->clj)
+      (get "cursor")))
+
 (defn receive [type payload]
   ;(js/console.log "TYPE" type "PAULOAD" payload)
   (case type
@@ -95,7 +101,7 @@
                    (grid/grid-clear op))
     "grid_line" (doseq [op (extract-grid-lines payload)]
                   (grid/draw-lines op))
-    "grid_cursor_goto" nil
+    "grid_cursor_goto" (grid/set-cursor (extract-grid-cursor payload))
     "flush" nil
     "mode_info_set" nil
     "mode_change" nil
