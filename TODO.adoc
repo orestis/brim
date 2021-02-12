@@ -1,22 +1,20 @@
-== Overview
+== TODO
 
-=== Architecture
+* Correct cursor based on mode
+* Better translation of keys so that Shift-; should send : and not <S-:>
+* Try out emoji, double width characters?, OS paste support and other stuff like this
+* Mouse support at least for resizing 
+* Even better performance (measure what's the delay)
+* Debug console to show rendering delay
 
-Server connects to the neovim instance and translates msgpack to websockets. So each notification
-from NeoVim will be read, and forwarded as a websocket message.
+== Next steps
 
-CAUTION: Unfortunately AFAICT msgpack cannot be just passed through, you have to decode everything
-to get to the end of the message.
-
-TODO: see how firenvim does it. They open up a websocket server directly from inside
-neovim, so perhaps they can attach callbacks directly via lua?
-
-The client receives the notifications and builds up some state that is rendered to the DOM
-via every flush.
-
-=== Challenges
-
-To win this game we have to be efficient at every step. It will be interesting to find the
-fast paths in DOM rendering, and what data structures will be useful to translate the neovim
-cells into "runs" that can be styles with CSS.
+* Multigrid support
+* Better scroll performance for multigrid if assumption stands?
+* External cmdline
+* External msges
+* External popup menu
+* External tabline
+* What is the ui-hl state? Could we use it to map to css classes for some stuff?
+* Morphdom or other approaches to mutate the dom?
 

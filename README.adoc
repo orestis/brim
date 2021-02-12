@@ -1,0 +1,42 @@
+== BRIM
+
+NeoVim UI in the browser.
+
+This is an experiment. Use at your own risk.
+
+=== Short intro
+You need a recent NeoVim (tested against 0.4.4),
+launched via `nvim --listen 127.0.0.1:7777`
+
+A Clojure server connects to that address, and
+opens an http server to http://127.0.0.1:7778/
+
+Open that page and you have a working NeoVim UI.
+
+=== Requirements
+
+To launch the server and build the client you
+need shadow-cljs. It's as easy as:
+
+`npx shadow-cljs watch app`
+
+But you need to connect via a REPL and start
+the server via `nvimgui.server/start-server`
+
+#TODO fix the above so it's a single command
+
+=== LICENSE
+
+Copyright 2021, Orestis Markou
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
