@@ -197,6 +197,9 @@
     java.lang.Integer
     (make-hl-array w h)))
 
+;; all wrong! top bot / left right are the scrolling region
+;; so all changes should be confined within that area
+;; and rows is the amount of copying to do within the area
 (defn scroll-array [arr top bot left right rows]
   ;; array is a 2d array
   ;; we need to make a copy of the region defined by top/bot/left/right
@@ -212,32 +215,35 @@
       (aset region i row-copy))
     (loop [i 0]
       (let [dst-idx (+ top i rows)
-            src (aget region i)
-            dst (aget arr dst-idx)]
-      (System/arraycopy src
-                        0 ;; start, always 0
-                        dst ;; dst
-                        left ;; dest pos
-                        w ;; length
-                        )
-      (let [next-i (inc i)] 
-        (if (and 
-              (< next-i h)
-              (< (+ top next-i rows) (alength arr)))
-          (recur next-i)
-          i))))))
+            src (aget region i)]
+        ;; dst-idx can be negative, which means out of the region,
+        ;; which means -- ignore
+        (when (>= dst-idx 0)
+          (System/arraycopy src
+                            0 ;; start, always 0
+                            (aget arr dst-idx) ;; dst
+                            left ;; dest pos
+                            w ;; length
+                            ))
+        (let [next-i (inc i)] 
+          (if (and 
+                (< next-i h)
+                (< (+ top next-i rows) (alength arr)))
+            (recur next-i)
+            [(max (+ top rows) 0) ;; changed-row-start
+             dst-idx] ;; changed-row-end
+            ))))))
 
 
 (defmethod redraw-event "grid_scroll"
   [state _ [grid-id top bot left right rows _cols]]
   (let [{:keys [text hl-ids dimensions]} (get-in state [:grids grid-id])
         [_ h] dimensions
-        changed-row-count1 (scroll-array text top bot left right rows)
-        changed-row-count2 (scroll-array hl-ids top bot left right rows)
-        changed-row-start (+ top rows)
-        changed-row-end (min (+ changed-row-start changed-row-count1)
-                             h)
-        ]
+        _
+        (println "GRID SCROLL" dimensions top bot left right rows)
+        [changed-row-start changed-row-end] (scroll-array text top bot left right rows)
+        _(scroll-array hl-ids top bot left right rows) ]
+    (println "grid scroll" changed-row-start changed-row-end)
     (reduce (fn [state row]
               (update-in state [:current-ops 0 :grid-lines grid-id]
                          assoc row (html-line state grid-id row)))
