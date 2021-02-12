@@ -292,7 +292,3 @@
                    :current-ops [])
             events)))
 
-(comment
-(process-redraw (create-editor-ui (a/chan 10)) (drop 1 EVENTS))
-OPS
-)

@@ -12,6 +12,7 @@ body {
     position: relative;
 }
 
+
 .busy {
     opacity: 1;
 }
@@ -31,6 +32,11 @@ body {
     height: 1rem;
     width: 100%;
     position: relative;
+}
+
+.row-container span {
+    height: 1rem;
+    display: inline-block;
 }
 
 [data-hl-id='0'] {
