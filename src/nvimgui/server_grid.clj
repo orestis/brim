@@ -200,6 +200,15 @@
 ;; all wrong! top bot / left right are the scrolling region
 ;; so all changes should be confined within that area
 ;; and rows is the amount of copying to do within the area
+
+(defn get-scroll-region-bounds [top bot rows]
+  (let [h (- bot top)
+        src-top (if (pos? rows) rows 0)
+        src-bot (if (pos? rows) h (+ h rows))
+        dst-top (if (pos? rows) 0 (- rows))
+        dst-bot (if (pos? rows) (- h rows) h) ]
+    [src-top src-bot dst-top dst-bot]))
+
 (defn scroll-array [arr top bot left right rows]
   ;; array is a 2d array
   ;; we need to make a copy of the region defined by top/bot/left/right
@@ -207,43 +216,34 @@
         h (- bot top)
         cls (class (aget arr 0 0))
         region (create-array cls w h)
-        rows (- rows)]
+        [src-top src-bot dst-top dst-bot]
+        (get-scroll-region-bounds top bot rows)]
     (assert (= (type arr) (type region)))
     (doseq [i (range h)
             :let [row (aget arr (+ i top))
                   row-copy (copy-array cls row left right)]]
       (aset region i row-copy))
-    (loop [i 0]
-      (let [dst-idx (+ top i rows)
-            src (aget region i)]
-        ;; dst-idx can be negative, which means out of the region,
-        ;; which means -- ignore
-        (when (>= dst-idx 0)
-          (System/arraycopy src
-                            0 ;; start, always 0
-                            (aget arr dst-idx) ;; dst
-                            left ;; dest pos
-                            w ;; length
-                            ))
-        (let [next-i (inc i)] 
-          (if (and 
-                (< next-i h)
-                (< (+ top next-i rows) (alength arr)))
-            (recur next-i)
-            [(max (+ top rows) 0) ;; changed-row-start
-             dst-idx] ;; changed-row-end
-            ))))))
+    ;; region now contains a snapshot of the SR
+    ;; if the rows is positive, we are scrolling down
+    ;; which means that we throw away the top part of the region
+    ;; and vice-versa for negative rows, throw away the bottom part
+    (doseq [[src-i dst-i] (map vector 
+                               (range src-top src-bot) 
+                               (range dst-top dst-bot))
+            :let [src-line (aget region src-i)
+                  abs-dst-idx (+ top dst-i)]]
+      (System/arraycopy src-line 0
+                        (aget arr abs-dst-idx)
+                        left w))
+    [(+ top dst-top)
+     (+ top dst-bot)]))
 
 
 (defmethod redraw-event "grid_scroll"
   [state _ [grid-id top bot left right rows _cols]]
-  (let [{:keys [text hl-ids dimensions]} (get-in state [:grids grid-id])
-        [_ h] dimensions
-        _
-        (println "GRID SCROLL" dimensions top bot left right rows)
+  (let [{:keys [text hl-ids]} (get-in state [:grids grid-id])
         [changed-row-start changed-row-end] (scroll-array text top bot left right rows)
         _(scroll-array hl-ids top bot left right rows) ]
-    (println "grid scroll" changed-row-start changed-row-end)
     (reduce (fn [state row]
               (update-in state [:current-ops 0 :grid-lines grid-id]
                          assoc row (html-line state grid-id row)))
