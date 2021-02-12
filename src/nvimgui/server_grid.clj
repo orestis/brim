@@ -110,13 +110,27 @@
           (recur i  1 (inc i) cur-hl (conj ranges
                                           [last-hl seg-start seg-length])))))))
 
+
+(defn escape-span [text start l]
+  (let [sb (StringBuilder.)]
+    (doseq [i (range start (+ start l))
+            :let [c (aget text i)]]
+      (case c
+        \< (.append sb "&lt;")
+        \> (.append sb "&gt;")
+        \& (.append sb "&amp;")
+        \' (.append sb "&#39;")
+        \" (.append sb "&quot;")
+        (.append sb c)))
+    (str sb)))
+
 (defn spans-from-ranges [text ranges]
   (let [sb (StringBuilder.)]
     (doseq [[hl-id start l] ranges]
       (.append sb "<span class='hl-")
       (.append sb hl-id)
       (.append sb "'>")
-      (.append sb text start l)
+      (.append sb (escape-span  text start l))
       (.append sb "</span>"))
     (str sb)))
 
@@ -140,11 +154,17 @@
 (defmethod redraw-event "grid_line"
   [state _ [grid-id row col-start cells]]
   (let [{:keys [text hl-ids]} (get-in state [:grids grid-id])
-        idx (atom col-start)]
+        idx (atom col-start)
+        last-seen-hl-id (atom nil)]
     ;; text and hl-ids are mutable! bang away
+    (when (= row 35)
+      (println "ROW 35" col-start (pr-str  cells)))
+
     (doseq [[s hl-id n] cells
             :let [n (or n 1)
-                  hl-id (when hl-id (int hl-id))
+                  hl-id (if hl-id
+                          (reset! last-seen-hl-id (int hl-id))
+                          @last-seen-hl-id)
                   c (first s)]]
       (loop [n n]
         (let [cur-idx @idx]
