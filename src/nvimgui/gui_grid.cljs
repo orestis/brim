@@ -1,6 +1,7 @@
 (ns nvimgui.gui-grid
   (:require [nvimgui.gui-events :as gui]
             [goog.dom :as dom]
+            [goog.dom.classlist :as dom.classlist]
             [clojure.string :as str]
             [goog.style :as style]
             ["/js/utils" :as utils])
@@ -32,14 +33,17 @@
                                         " "
                                         (when strikethrough "line-through")))})))
 
-(defn install-sheets [highlights]
+(defonce all-highlights (atom {}))
+
+(defn install-sheets [new-highlights]
   (when @styles
     (style/uninstallStyles @styles))
+  (swap! all-highlights merge new-highlights)
   (let [rules (mapv (fn [[hl-id hl-value]]
                       (let [selector (str ".hl-" hl-id "")
                             style (css-from-hl-attr hl-value)]
                         (SafeStyleSheet/createRule selector style)))
-                    highlights)
+                    @all-highlights)
         new-styles (apply SafeStyleSheet/concat rules)]
     (reset! styles
             (style/installSafeStyleSheet new-styles))))
@@ -99,7 +103,8 @@
       (set! (.-innerHTML node) html))))
 
 
-
+(defn set-busy [x]
+  (dom.classlist/enable root "busy" x))
 
 
 

@@ -82,6 +82,8 @@
   (case type
     nil nil
     "option_set" nil
+    "busy_start" (grid/set-busy true)
+    "busy_stop" (grid/set-busy false)
     "default_colors_set" (grid/install-default-colors 
                            (extract-default-colors payload))
     "hl_attr_define" (grid/install-sheets
