@@ -101,6 +101,9 @@
                    (grid/grid-clear op))
     "grid_line" (doseq [op (extract-grid-lines payload)]
                   (grid/draw-lines op))
+    ;; eqiuvalent to grid lines for now
+    "grid_scroll" (doseq [op (extract-grid-lines payload)]
+                  (grid/draw-lines op))
     "grid_cursor_goto" (grid/set-cursor (extract-grid-cursor payload))
     "flush" nil
     "mode_info_set" nil

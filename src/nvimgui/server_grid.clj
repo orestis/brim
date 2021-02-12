@@ -53,10 +53,16 @@
   (update-in state [:current-ops 0 :highlight-groups] assoc name id))
 
 
+(defn make-char-array [w h]
+  (into-array (repeatedly h #(char-array w \space))))
+
+(defn make-hl-array [w h]
+  (make-array java.lang.Integer h w))
+
 (defn create-grid [w h]
-  {:text (into-array (repeatedly h #(char-array w \space)))
+  {:text (make-char-array w h)
    :dimensions [w h]
-   :hl-ids (make-array java.lang.Integer h w)})
+   :hl-ids (make-hl-array w h)})
 
 
 (defmethod redraw-event "grid_resize"
@@ -149,6 +155,73 @@
             (recur (dec n))))))
     (update-in state [:current-ops 0 :grid-lines grid-id]
                assoc row (html-line state grid-id row))))
+
+(defn copy-array [cls arr from to]
+  (assert (>= from 0) "from should be non-negative")
+  (assert (< from (alength arr)) "from should be less than length")
+
+  (condp = cls
+    java.lang.Character
+    (java.util.Arrays/copyOfRange ^chars arr (int from) (int to))
+    nil
+    (java.util.Arrays/copyOfRange ^Integer arr (int from) (int to))
+    java.lang.Integer
+    (java.util.Arrays/copyOfRange ^Integer arr (int from) (int to))))
+
+(defn create-array [cls w h]
+  (condp = cls
+    java.lang.Character
+    (make-char-array w h)
+    nil
+    (make-hl-array w h)
+    java.lang.Integer
+    (make-hl-array w h)))
+
+(defn scroll-array [arr top bot left right rows]
+  ;; array is a 2d array
+  ;; we need to make a copy of the region defined by top/bot/left/right
+  (let [w (- right left)
+        h (- bot top)
+        cls (class (aget arr 0 0))
+        region (create-array cls w h)
+        rows (- rows)]
+    (assert (= (type arr) (type region)))
+    (doseq [i (range h)
+            :let [row (aget arr (+ i top))
+                  row-copy (copy-array cls row left right)]]
+      (aset region i row-copy))
+    (loop [i 0]
+      (let [dst-idx (+ top i rows)
+            src (aget region i)
+            dst (aget arr dst-idx)]
+      (System/arraycopy src
+                        0 ;; start, always 0
+                        dst ;; dst
+                        left ;; dest pos
+                        w ;; length
+                        )
+      (let [next-i (inc i)] 
+        (if (and 
+              (< next-i h)
+              (< (+ top next-i rows) (alength arr)))
+          (recur next-i)
+          i))))))
+
+
+(defmethod redraw-event "grid_scroll"
+  [state _ [grid-id top bot left right rows _cols]]
+  (let [{:keys [text hl-ids dimensions]} (get-in state [:grids grid-id])
+        [_ h] dimensions
+        changed-row-count1 (scroll-array text top bot left right rows)
+        changed-row-count2 (scroll-array hl-ids top bot left right rows)
+        changed-row-start (+ top rows)
+        changed-row-end (min (+ changed-row-start changed-row-count1)
+                             h)
+        ]
+    (reduce (fn [state row]
+              (update-in state [:current-ops 0 :grid-lines grid-id]
+                         assoc row (html-line state grid-id row)))
+           state (range changed-row-start changed-row-end))))
 
 (defn compress-ops [ops]
   (->> ops

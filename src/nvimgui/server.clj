@@ -48,15 +48,13 @@
       (when-let [msg (a/<!! ic)]
         ;(println "received from nvim " msg)
         (when-let [{:keys [ui]} (get @editors ch)]
-          (println "found editor for channel")
           (let [{type ::nvim/type
                  method :method
                  params :params
                  :as decoded} (nvim/decode-event msg)]
-            (println decoded "event type" type)
             (cond
               (= type ::nvim/response)
-              (println "response>>> " decoded)
+              (println "nvim response" msg)
               (and (= type ::nvim/notification)
                    (= method "redraw"))
               (let [new-ui (sg/process-redraw ui (first params))]
