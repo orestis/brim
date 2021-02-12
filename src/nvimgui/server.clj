@@ -23,11 +23,13 @@
              <link rel='stylesheet' href='/css/main.css'>
              <link rel=\"icon\" href=\"data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎯</text></svg>\">
              "
-             "</head> <body>"
+             "</head> <body class='debug'>"
              "<div id='sente-csrf-token' data-csrf-token='" csrf-token "'></div> "
 
              "
-             <div id='app'>app here</div>
+             <div id='debug'></div>
+             <div id='app'></div>
+             <div id='cell' style='width: 1ch; height: 1rem; display:none;'></div>
              <script src='/js/main.js'></script>
              <script>nvimgui.client.init()</script>
              </body>
@@ -66,7 +68,7 @@
                             h 50}}]
   (nvim/send-off-command (:output-chan conn) "nvim_ui_detach")
   (nvim/send-off-command (:output-chan conn)
-                         "nvim_ui_attach" w h
+                         "nvim_ui_attach" (int w) (int h)
                          {"ext_linegrid" true
                           "rgb" true}) )
 
@@ -78,7 +80,7 @@
         ;(println "received from nvim " msg)
         (recur)))))
 
-(defn init-editor [ch]
+(defn init-editor [ch ] 
   (let [conn (nvim/nvim-conn 
                           (nvim/connect-to-nvim "127.0.0.1" 7777)
                           (a/chan 5) (a/chan 5))
@@ -88,7 +90,6 @@
     (nvim/start! conn)
     (connect-ops-to-websocket ops-chan ch)
     (connect-nvim-to-server-grid ch ic)
-    (attach-ui conn {})
   {:conn conn
    :ui ui}))
 
@@ -102,7 +103,9 @@
         {:keys [conn ui]} (get @editors ch)
         oc (:output-chan conn)]
     (case type
-      "init" nil
+      "init"  (let [{:keys [w h]} payload] 
+                (println "RECEIVED INIT" w h)
+                (attach-ui conn {:w w :h h}))
       "key" (nvim/send-off-command oc
                                    "nvim_input" payload)
       (println "unknown event" type payload))))

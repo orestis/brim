@@ -9,8 +9,18 @@
            SafeStyle SafeStyleSheet]))
 
 (defonce root (.getElementById js/document "app"))
+(defonce cell (.getElementById js/document "cell"))
+(defonce debug (.getElementById js/document "debug"))
 (defonce styles (atom nil))
 (defonce default-styles (atom nil))
+
+(defn measure-grid []
+  (let [cell-size (style/getSize cell)
+        window-size (style/getSize root)
+        w (/ (.-width window-size) (.-width cell-size))
+        h (/ (.-height window-size) (.-height cell-size)) ]
+
+    [(Math/floor w) (Math/floor h)]))
 
 (defn css-from-hl-attr [{:strs [foreground background
                                 special reverse

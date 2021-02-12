@@ -3,6 +3,26 @@ body {
     margin: 0;
 }
 
+#debug {
+    height: 1.5rem;
+    display: none;
+    background: rgb(251,132,63);
+    background: radial-gradient(circle, rgba(251,132,63,1) 0%, rgba(252,70,107,1) 100%);
+}
+
+#app {
+    width: 100vw;
+    height: 100vh; 
+}
+
+.debug #app {
+    height: calc(100vh - 1.5rem); 
+}
+
+.debug #debug {
+    display: block;
+}
+
 
 
 .grid-container {

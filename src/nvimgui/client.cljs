@@ -22,10 +22,12 @@
 (defn send-msg [msg]
   (.send conn (js/JSON.stringify msg)))
 
+
 (set! (.-onopen conn)
-  (fn [e]
-    (js/console.log "OPEN!!!" conn)
-    (send-msg #js ["init"])))
+      (fn [e]
+        (js/console.log "OPEN!!!" conn)
+        (let [[w h] (grid/measure-grid)]
+          (send-msg #js ["init" #js {:w w :h h}] ))))
 
 (set! (.-onerror conn) 
   (fn []
