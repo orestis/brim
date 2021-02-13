@@ -27,7 +27,10 @@
              "<div id='sente-csrf-token' data-csrf-token='" csrf-token "'></div> "
 
              "
-             <div id='debug'></div>
+             <div id='debug'>
+             <input type='text' id='keyboard'></input>
+             <span id='keycode'></span>
+             </div>
              <div id='app'></div>
              <div id='cell' style='width: 1ch; height: 1rem; display:none;'></div>
              <script src='/js/main.js'></script>
