@@ -1,8 +1,16 @@
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
+
 == BRIM
 
 NeoVim UI in the browser.
 
-This is an experiment. Use at your own risk.
+WARNING: This is an experiment. Use at your own risk.
 
 === Short intro
 You need a recent NeoVim (tested against 0.4.4),
@@ -17,7 +25,7 @@ opens an http server to http://127.0.0.1:7778/
 Open that page and you have a working NeoVim UI.
 
 If things break, you can just refresh the page and reconnect
-to NeoVim. And things will break, see the [[TODO.adoc]] for 
+to NeoVim. And things will break, see the link:TODO.adoc[TODO] for 
 what's left to be done.
 
 === Requirements
