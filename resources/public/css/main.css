@@ -1,6 +1,15 @@
 body {
     background: #fbfbfb;
     margin: 0;
+
+    font-family: Menlo, "Courier New", monospace;
+}
+
+#app {
+    width: 100vw;
+    height: 100vh;
+
+
 }
 
 #debug {
@@ -25,7 +34,6 @@ body {
 
 
 pre {
-    font-family: Menlo, "Courier New", monospace;
 }
 
 .grid-container {
@@ -60,6 +68,7 @@ pre {
 .row-container span {
     height: 1rem;
     display: inline-block;
+    line-height: 1;
 }
 
 [data-hl-id='0'] {

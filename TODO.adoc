@@ -1,8 +1,8 @@
 == TODO
 
 * Correct cursor based on mode
-* Better translation of keys so that Shift-; should send : and not <S-:>
-* Try out emoji, double width characters?, OS paste support and other stuff like this
+* Composed emoji (seems like neovim bug?)
+* OS paste support and other stuff like this
 * Mouse support at least for resizing 
 * Even better performance (measure what's the delay)
 * Debug console to show rendering delay

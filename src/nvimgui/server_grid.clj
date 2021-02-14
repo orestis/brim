@@ -2,6 +2,8 @@
   "Maintain a server-side grid"
   (:require [clojure.core.async :as a]))
 
+(set! *warn-on-reflection* true)
+
 (defn create-editor-ui [ops-chan]
   {:grids {}
    :ops-chan ops-chan})
@@ -54,7 +56,7 @@
 
 
 (defn make-char-array [w h]
-  (into-array (repeatedly h #(char-array w \space))))
+  (make-array java.lang.String h w))
 
 (defn make-hl-array [w h]
   (make-array java.lang.Integer h w))
@@ -87,13 +89,14 @@
 
 
 
+(comment
 (defn debug-grid [{:keys [text dimensions]}]
   (let [[w h] dimensions
         sb (StringBuilder.)]
     (doseq [row (range h)]
       (.append sb (String. (aget text row)))
       (.append sb \newline))
-    (str sb)))
+    (str sb))))
 
 
 (defn segment-row [hl]
@@ -116,11 +119,12 @@
     (doseq [i (range start (+ start l))
             :let [c (aget text i)]]
       (case c
-        \< (.append sb "&lt;")
-        \> (.append sb "&gt;")
-        \& (.append sb "&amp;")
-        \' (.append sb "&#39;")
-        \" (.append sb "&quot;")
+        nil (.append sb " ")
+        "<" (.append sb "&lt;")
+        ">" (.append sb "&gt;")
+        "&" (.append sb "&amp;")
+        "'" (.append sb "&#39;")
+        "\"" (.append sb "&quot;")
         (.append sb c)))
     (str sb)))
 
@@ -157,21 +161,31 @@
         idx (atom col-start)
         last-seen-hl-id (atom nil)]
     ;; text and hl-ids are mutable! bang away
-    (when (= row 35)
-      (println "ROW 35" col-start (pr-str  cells)))
+    #_
+    (when (= row 0)
+      (println "ROW 0" col-start (pr-str  cells)))
 
     (doseq [[s hl-id n] cells
             :let [n (or n 1)
                   hl-id (if hl-id
                           (reset! last-seen-hl-id (int hl-id))
                           @last-seen-hl-id)
-                  c (first s)]]
+                  c (or s " ")]]
       (loop [n n]
         (let [cur-idx @idx]
           (when-not (zero? n)
-            (aset text row cur-idx c)
-            (aset hl-ids row cur-idx hl-id)
-            (swap! idx inc)
+            (try
+              #_
+              (when (= row 0)
+                (println "setting " cur-idx (pr-str c)))
+              (aset text row cur-idx c)
+              (aset hl-ids row cur-idx hl-id)
+              (catch Exception e
+
+                (println "EXCEPITION" e (.getMessage e) "setting idx " cur-idx "char" (pr-str c) "hl-id" hl-id )
+                (println "CELLS WAS " (pr-str cells))))
+
+              (swap! idx inc)
             (recur (dec n))))))
     (update-in state [:current-ops 0 :grid-lines grid-id]
                assoc row (html-line state grid-id row))))
@@ -181,19 +195,15 @@
   (assert (< from (alength arr)) "from should be less than length")
 
   (condp = cls
-    java.lang.Character
-    (java.util.Arrays/copyOfRange ^chars arr (int from) (int to))
-    nil
-    (java.util.Arrays/copyOfRange ^Integer arr (int from) (int to))
+    java.lang.String
+    (java.util.Arrays/copyOfRange ^"[Ljava.lang.String;" arr (int from) (int to))
     java.lang.Integer
-    (java.util.Arrays/copyOfRange ^Integer arr (int from) (int to))))
+    (java.util.Arrays/copyOfRange ^"[Ljava.lang.Integer;" arr (int from) (int to))))
 
 (defn create-array [cls w h]
   (condp = cls
-    java.lang.Character
+    java.lang.String
     (make-char-array w h)
-    nil
-    (make-hl-array w h)
     java.lang.Integer
     (make-hl-array w h)))
 

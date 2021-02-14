@@ -31,8 +31,15 @@
              <input type='text' id='keyboard'></input>
              <span id='keycode'></span>
              </div>
-             <div id='app'></div>
-             <div id='cell' style='width: 1ch; height: 1rem; display:none;'></div>
+             <div id='app'>
+             <pre id='cell-container' class='grid-container'>
+             <div class='row-container'>
+             <span id='cell'>0</span>
+             </pre>
+             </div>
+             </div>
+             
+             </div>
              <script src='/js/main.js'></script>
              <script>nvimgui.client.init()</script>
              </body>
