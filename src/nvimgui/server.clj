@@ -66,7 +66,8 @@
                  :as decoded} (nvim/decode-event msg)]
             (cond
               (= type ::nvim/response)
-              (println "nvim response" msg)
+              (when-let [error (:error decoded)]
+                (println "nvim error" error))
               (and (= type ::nvim/notification)
                    (= method "redraw"))
               (let [new-ui (sg/process-redraw ui (first params))]
@@ -112,7 +113,6 @@
   (let [[type payload] (json/read-value msg json/keyword-keys-object-mapper)
         {:keys [conn ui]} (get @editors ch)
         oc (:output-chan conn)]
-    (println "receiev " type payload)
     (case type
       "init"  (let [{:keys [w h]} payload] 
                 (println "RECEIVED INIT" w h)
