@@ -7,6 +7,7 @@
    [goog.dom :as dom]
    [nvimgui.gui-events :as gui]
    [nvimgui.gui-grid :as grid]
+   [nvimgui.cursor :as cursor]
    [nvimgui.keyboard :as kbd]
   ))
 
@@ -85,6 +86,19 @@
       (js->clj)
       (get "cursor")))
 
+(defn- extract-mode-info [payload]
+  (-> payload
+      first
+      (js->clj)))
+
+(defn- extract-mode-change [payload]
+  (-> payload
+      first
+      (js->clj)))
+
+(defn raf [f]
+  (js/requestAnimationFrame f))
+
 (defn receive [type payload]
   ;(js/console.log "TYPE" type "PAULOAD" payload)
   (case type
@@ -101,15 +115,15 @@
                     (grid/resize-grid op))
     "grid_clear" (doseq [op (extract-clear payload)]
                    (grid/grid-clear op))
-    "grid_line" (doseq [op (extract-grid-lines payload)]
-                  (grid/draw-lines op))
+    "grid_line" (raf #(doseq [op (extract-grid-lines payload)]
+                        (grid/draw-lines op)))
     ;; eqiuvalent to grid lines for now
-    "grid_scroll" (doseq [op (extract-grid-lines payload)]
-                  (grid/draw-lines op))
+    "grid_scroll" (raf #(doseq [op (extract-grid-lines payload)]
+                          (grid/draw-lines op)))
     "grid_cursor_goto" (grid/set-cursor (extract-grid-cursor payload))
     "flush" nil
-    "mode_info_set" nil
-    "mode_change" nil
+    "mode_info_set" (cursor/set-mode-info (extract-mode-info payload))
+    "mode_change" (cursor/mode-change (extract-mode-change payload))
     (js/console.log "unknown type" type payload)
     ))
 
@@ -121,7 +135,6 @@
       )))
 
 (defn send-keys [k]
-  (js/console.log "sending keycode" k)
   (send-msg #js ["key" k]))
 
 ;; start is called after code reloading finishes

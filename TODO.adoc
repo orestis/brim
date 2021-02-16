@@ -4,6 +4,7 @@
 * Composed emoji (seems like neovim bug?)
 * OS paste support and other stuff like this
 * Mouse support at least for resizing 
+* Don't ever lose focus of input box
 * Even better performance (measure what's the delay)
 * Debug console to show rendering delay
 

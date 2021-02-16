@@ -63,7 +63,6 @@
 (defonce last-value (atom nil))
 
 (defn dispatch-keycode [f keycode]
-  (js/console.log "dispatchinngn" keycode)
   (set! (.-innerText debug-kbd) (pr-str keycode))
   (when (string? keycode)
     (f keycode)))
@@ -71,7 +70,6 @@
 (defonce NNN (atom 0))
 
 (defn dispatch-proper-key [f]
-  (js/console.log "dispatch propery key" @NNN)
   (let [iv @last-value
         lkp @last-key-press
         {:keys [shift ctrl alt meta key]} lkp
@@ -90,16 +88,13 @@
       (dispatch-keycode f (key->code key modifiers))
 
       )
-    (js/console.log "should dispatch either" iv "or" lkp)
     (reset! last-key-press nil)
-    (reset! last-value nil)
-    (js/console.log "END" @NNN)))
+    (reset! last-value nil)))
 
 (def keys-prevent-default 
   #{"Tab" "Escape" "Enter"})
 
 (defn key-listener2 [f e]
-  (js/console.log "---" (str (repeat 10 (swap! NNN inc))) e)
   (let [k (.-key e)
         shift (.-shiftKey e)
         ctrl (.-ctrlKey e)
@@ -111,11 +106,9 @@
                             :meta meta})
     (js/setTimeout #(dispatch-proper-key f))
     (when (keys-prevent-default k)
-      (js/console.log "key prevents default" k)
       (.preventDefault e))))
 
 (defn key-listener [f e]
-  (js/console.log "kbd listemer " e)
   (when (special-keys (.-key e))
     (.preventDefault e))
   (let [k (.-key e)
@@ -128,12 +121,9 @@
         (f (key->code k modifiers))))))
 
 (defn on-input [e]
-  ;; TODO composition events
-  (js/console.log "INPUT" (repeat 10 (deref NNN)) e)
   (let [v (-> e .-target .-value)]
     (when-not (.-isComposing e)
-      (reset! last-value v))
-    (js/console.log "on input" v e)))
+      (reset! last-value v))))
 (defonce -add-listener (delay (.addEventListener input-kbd "input" on-input true)))
 (deref -add-listener)
 
