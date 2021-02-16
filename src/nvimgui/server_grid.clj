@@ -264,6 +264,58 @@
        (partition-by keys)
        (map #(apply merge-with merge %))))
 
+(defmethod redraw-event "win_viewport"
+  [state _ [grid msg-ext]]
+  (println "win_viewport" 1 msg-ext)
+  state)
+
+(defmethod redraw-event "msg_show"
+  [state _ [kind content replace_last]]
+  ;; content: array of [attr_id text_chunk] tuples
+  ;; kind: enum
+  ;; replace_last bool
+  (println "msg show" kind content replace_last)
+  state)
+
+(defmethod redraw-event "msg_showmode"
+  [state _ [kind content replace_last :as args]]
+  ;; content: array of [attr_id text_chunk] tuples
+  ;; kind: enum
+  ;; replace_last bool
+  (println "ARGS" args)
+  (println "msg showmode" kind content replace_last)
+  state)
+
+(defmethod redraw-event "msg_showcmd"
+  [state _ [kind content replace_last]]
+  ;; content: array of [attr_id text_chunk] tuples
+  ;; kind: enum
+  ;; replace_last bool
+  (println "msg showcmd" kind content replace_last)
+  state)
+
+(defmethod redraw-event "msg_ruler"
+  [state _ [kind content replace_last]]
+  ;; content: array of [attr_id text_chunk] tuples
+  ;; kind: enum
+  ;; replace_last bool
+  (println "msg ruler" kind content replace_last)
+  state)
+
+(defmethod redraw-event "cmdline_show"
+  [state _ [content pos firstc prompt indent level]]
+  
+  ;; content: list of [attrs string], attrs is a map (but looks like it's 0???)
+  ;; 
+  (println "CMD: L" level (str firstc prompt)  "cur>" pos ">IND<" indent "conte>" content)
+  
+  state
+  )
+
+(defmethod redraw-event "cmdline_hide"
+  [state _ _]
+  (println "CMD hide")
+  state)
 
 (defmethod redraw-event "flush"
   [state _ _]

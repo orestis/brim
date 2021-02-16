@@ -79,7 +79,7 @@
         dead-key (= "Dead" (:key lkp))]
     (cond 
       (not no-input)
-      (dispatch-keycode f iv)
+      (dispatch-keycode f (key->code iv ""))
 
       (and no-input dead-key)
       (js/console.log "ignoring dead event, waiting for compositionn to finish")

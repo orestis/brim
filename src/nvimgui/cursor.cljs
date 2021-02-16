@@ -5,6 +5,7 @@
 (defonce modes (atom {}))
 (defonce curr-mode-idx (atom nil))
 
+
 (defn cursor-shape-class [shape percent]
   (case shape
     "block" nil
@@ -29,3 +30,9 @@
   #_
   (let [mode (get @modes mode-idx)]
     (js/console.log)))
+
+(defn set-cursor [[grid-id row col] grids]
+  (let [grid (get grids grid-id)
+        cursor (:cursor grid)]
+    (set! (.-style cursor)
+          (str "left: " col "ch; top: " row "rem;"))))

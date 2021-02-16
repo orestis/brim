@@ -120,8 +120,8 @@
     ;; eqiuvalent to grid lines for now
     "grid_scroll" (raf #(doseq [op (extract-grid-lines payload)]
                           (grid/draw-lines op)))
-    "grid_cursor_goto" (grid/set-cursor (extract-grid-cursor payload))
     "flush" nil
+    "grid_cursor_goto" (cursor/set-cursor (extract-grid-cursor payload) @grid/grids)
     "mode_info_set" (cursor/set-mode-info (extract-mode-info payload))
     "mode_change" (cursor/mode-change (extract-mode-change payload))
     (js/console.log "unknown type" type payload)

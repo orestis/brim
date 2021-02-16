@@ -1,3 +1,34 @@
+== Next steps
+
+* revisit text lines
+
+It seems that text lines are pretty much everywhere, and annoyingly enough, 
+the API for them is not consistent. For example grid_line will send you
+[string hl-id repeat-count], but cmd-line will send you [attrs string],
+but attrs is a map (according to the docs) but comes back as a number?
+
+And in many places, you are supposed to be able to slice and dice columns
+based on the a cursor position (e.g. in cmdline_special_char)
+
+It would be good to be able to keep the line of text as a string so that
+it can indexed into, sliced and diced, and then together with an array of
+highlights converted efficiently into a either a series of spans or whatever.
+
+* cmdline support
+
+It's nice that in Vim the cmd line is always at a consistent place at the bottom of the screen
+
+So perhaps we should keep it there?
+
+Reserve a single line of space for the cmdline, and in the case of "blocks" just grow
+upwards, overlaping the grids.
+
+* messages support
+
+Would be nice to show some messages as popups (e.g. lint??)
+
+But otherwise we should keep them in the cmd line
+
 == TODO
 
 * Correct cursor based on mode
@@ -8,7 +39,7 @@
 * Even better performance (measure what's the delay)
 * Debug console to show rendering delay
 
-== Next steps
+== Future steps
 
 * Multigrid support
 * Better scroll performance for multigrid if assumption stands?

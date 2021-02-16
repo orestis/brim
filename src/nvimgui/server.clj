@@ -38,7 +38,7 @@
              </pre>
              </div>
              </div>
-             
+
              </div>
              <script src='/js/main.js'></script>
              <script>nvimgui.client.init()</script>
@@ -81,6 +81,8 @@
   (nvim/send-off-command (:output-chan conn)
                          "nvim_ui_attach" (int w) (int h)
                          {"ext_linegrid" true
+                          "ext_messages" true
+                          "ext_cmdline" true
                           "rgb" true}) )
 
 (defn connect-ops-to-websocket [ops-chan ch]

@@ -68,6 +68,7 @@ pre {
     bottom: 0;
     display: block;
     backdrop-filter: invert(100%);
+    -webkit-backdrop-filter: invert(100%);
 }
 
 .cursor {

@@ -121,10 +121,5 @@
   (dom.classlist/enable root "busy" x))
 
 
-(defn set-cursor [[grid-id row col]]
-  (let [grid (get @grids grid-id)
-        cursor (:cursor grid)]
-    (set! (.-style cursor)
-          (str "left: " col "ch; top: " row "rem;"))))
 
 
